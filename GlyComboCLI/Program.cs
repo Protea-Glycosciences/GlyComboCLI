@@ -362,7 +362,8 @@ class Program
             }
 
             // Mass Error Type
-            if (options.massErrorType == "Da" || options.massErrorType == "ppm")
+            options.massErrorType = options.massErrorType.ToLower();
+            if (options.massErrorType == "da" || options.massErrorType == "ppm")
             {
                 Console.WriteLine($"The mass error is {options.massError} {options.massErrorType}");
             }
@@ -1170,7 +1171,7 @@ class Program
                     }
 
                     // Define the upper and lower error tolerances for search
-                    if (options.massErrorType == "Da" || options.massErrorType == "ppm")
+                    if (options.massErrorType == "da" || options.massErrorType == "ppm")
                     {
                         errorTol = options.massError;
                     }
@@ -1214,7 +1215,7 @@ class Program
                 {
                     bool targetFound = false;
                     // Define the upper and lower error tolerances for search
-                    if (options.massErrorType == "Da")
+                    if (options.massErrorType == "da")
                     {
                         targetLow = targets[i] - options.massError;
                         targetHigh = targets[i] + options.massError;
