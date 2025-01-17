@@ -323,11 +323,12 @@ class Program
         {
 
             // Derivatisation
+            options.derivatisation = options.derivatisation.ToLower();
             switch (options.derivatisation)
             {
-                case "Native":
-                case "Permethylated":
-                case "Peracetylated":
+                case "native":
+                case "permethylated":
+                case "peracetylated":
                     Console.WriteLine($"The derivatisation is {options.derivatisation}");
                     break;
 
@@ -337,16 +338,17 @@ class Program
             }
 
             // Reducing End
+            options.reducedEnd = options.reducedEnd.ToLower();
             switch (options.reducedEnd)
             {
-                case "Free":
-                case "Reduced":
-                case "InstantPC":
-                case "Rapifluor-MS":
+                case "free":
+                case "reduced":
+                case "instantPC":
+                case "rapifluor-MS":
                 case "2-aminobenzoic acid":
                 case "2-aminobenzamide":
-                case "Procainamide":
-                case "Girard's reagent P":
+                case "procainamide":
+                case "girard's reagent p":
                     Console.WriteLine($"The reduced end is {options.reducedEnd}");
                     break;
 
@@ -604,7 +606,7 @@ class Program
                 {
                     solutionMultiples = "";
                     // Define the components in the combinatorial analysis: native, permethylated, peracetylated
-                    if (options.derivatisation == "Native")
+                    if (options.derivatisation == "native")
                     {
                         // Native
                         dhex = 146.057908m; // permethylated mass = 174.089210 chemical formula = C8H14O4
@@ -629,7 +631,7 @@ class Program
                         amneugc = 334.1376157m;
                         sulf = 79.956815m; // SO3
                     }
-                    if (options.derivatisation == "Permethylated")
+                    if (options.derivatisation == "permethylated")
                     {
                         // Permethylated
                         dhex = 174.089210m; // chemical formula = C8H14O4
@@ -645,7 +647,7 @@ class Program
                         phos = 93.981980m; // chemical formula = PO3H3C1
                         sulf = 65.941165m; // chemical formula = SO3C-1H-2
                     }
-                    if (options.derivatisation == "Peracetylated")
+                    if (options.derivatisation == "peracetylated")
                     {
                         // Peracetylated
                         dhex = 230.079038m; // chemical formula = C10H14O6
@@ -1081,45 +1083,45 @@ class Program
                     }
 
                     // Early processing of target list, breaking it down so that the reducing ends are removed
-                    if (options.derivatisation == "Native")
+                    if (options.derivatisation == "native")
                     {
                         // Assuming `options.reducingEnd` is a string with values like "Free", "Reduced", etc.
                         switch (options.reducedEnd)
                         {
-                            case "Free":
-                                reducedEnd = "Free";
+                            case "free":
+                                reducedEnd = "free";
                                 targets = targets.Select(z => z - 18.010555m).ToList();
                                 break;
-                            case "Reduced":
-                                reducedEnd = "Reduced";
+                            case "reduced":
+                                reducedEnd = "reduced";
                                 targets = targets.Select(z => z - 20.026195m).ToList();
                                 break;
-                            case "InstantPC":
-                                reducedEnd = "InstantPC";
+                            case "instantPC":
+                                reducedEnd = "instantpc";
                                 targets = targets.Select(z => z - (18.010555m + 261.14773m)).ToList();
                                 break;
-                            case "Rapifluor-MS":
-                                reducedEnd = "Rapifluor-MS";
+                            case "rapifluor-ms":
+                                reducedEnd = "rapifluor-ms";
                                 targets = targets.Select(z => z - (18.010555m + 311.17461m)).ToList();
                                 break;
-                            case "2AA":
-                                reducedEnd = "2AA";
+                            case "2aa":
+                                reducedEnd = "2aa";
                                 targets = targets.Select(z => z - (18.010555m + 121.052774m)).ToList();
                                 break;
-                            case "2AB":
-                                reducedEnd = "2AB";
+                            case "2ab":
+                                reducedEnd = "2ab";
                                 targets = targets.Select(z => z - (18.010555m + 120.068758m)).ToList();
                                 break;
-                            case "Procainamide":
-                                reducedEnd = "Procainamide";
+                            case "procainamide":
+                                reducedEnd = "procainamide";
                                 targets = targets.Select(z => z - (18.010555m + 219.173557m)).ToList();
                                 break;
-                            case "girP":
-                                reducedEnd = "girP";
+                            case "girp":
+                                reducedEnd = "girp";
                                 targets = targets.Select(z => z - (18.010555m + 134.07182m)).ToList();
                                 break;
-                            case "Custom":
-                                reducedEnd = "Custom";
+                            case "custom":
+                                reducedEnd = "custom";
                                 targets = targets.Select(z => z - (18.010555m + options.customReducingMass)).ToList();
                                 break;
                             default:
@@ -1127,34 +1129,34 @@ class Program
                         }
 
                     }
-                    else if (options.derivatisation == "Permethylated")
+                    else if (options.derivatisation == "permethylated")
                     {
                         switch (options.reducedEnd)
                         {
-                            case "Free":
+                            case "free":
                                 targets = targets.Select(z => z - (18.010555m + 28.031300m)).ToList();
                                 break;
-                            case "Reduced":
+                            case "reduced":
                                 targets = targets.Select(z => z - (20.026195m + 42.046950m)).ToList();
                                 break;
-                            case "Custom":
+                            case "custom":
                                 targets = targets.Select(z => z - (18.010555m + options.customReducingMass)).ToList();
                                 break;
                             default:
                                 break;
                         }
                     }
-                    else if (options.derivatisation == "Peracetylated")
+                    else if (options.derivatisation == "peracetylated")
                     {
                         switch (options.reducedEnd)
                         {
-                            case "Free":
+                            case "free":
                                 targets = targets.Select(z => z - (18.010555m + 84.021129m)).ToList();
                                 break;
-                            case "Reduced":
+                            case "reduced":
                                 targets = targets.Select(z => z - (20.026195m + 126.031694m)).ToList();
                                 break;
-                            case "Custom":
+                            case "custom":
                                 targets = targets.Select(z => z - (18.010555m + options.customReducingMass)).ToList();
                                 break;
                             default:
@@ -1372,7 +1374,7 @@ class Program
                     // This replaces all the masses with their respective monosaccharide identities
                     switch (options.derivatisation)
                     {
-                        case "Native":
+                        case "native":
                             solutions = solutions.Replace("146.057908", "dHex ").Replace("162.052823", "Hex ").Replace("291.095416", "Neu5Ac ").Replace("307.090331", "Neu5Gc ").Replace("203.079372", "HexNAc ").Replace("79.966331", "Phos ").Replace("79.956815", "Sulf ").Replace(",", "").Replace("161.068808", "HexN ").Replace("176.032088", "HexA ").Replace("187.084458", "dHexNAc ").Replace("132.042258", "Pent ").Replace("250.068867", "KDN ").Replace("273.0848518", "lneuac ").Replace("319.1267166", "eeneuac ").Replace("318.1427011", "dneuac ").Replace("290.1114009", "amneuac ").Replace("42.010565", "acetyl ").Replace("289.0797664", "lneugc ").Replace("335.1216313", "eeneugc ").Replace("306.1063155", "dneugc ").Replace("334.1376157", "amneugc ").Replace(options.customMono1Mass.ToString(), options.customMono1Name + " ").Replace(options.customMono2Mass.ToString(), options.customMono2Name + " ").Replace(options.customMono3Mass.ToString(), options.customMono3Name + " ").Replace(options.customMono4Mass.ToString(), options.customMono4Name + " ").Replace(options.customMono5Mass.ToString(), options.customMono5Name + " ");
 
                             // Chemical formulae for native
@@ -1559,51 +1561,51 @@ class Program
 
                             switch (options.reducedEnd)
                             {
-                                case "Free":
+                                case "free":
                                     chemicalFormulaeH += 2;
                                     chemicalFormulaeO += 1;
                                     break;
-                                case "Reduced":
+                                case "reduced":
                                     chemicalFormulaeH += 4;
                                     chemicalFormulaeO += 1;
                                     break;
-                                case "InstantPC":
+                                case "instantpc":
                                     chemicalFormulaeC += 14;
                                     chemicalFormulaeH += 21;
                                     chemicalFormulaeN += 3;
                                     chemicalFormulaeO += 3;
                                     break;
-                                case "Rapifluor-MS":
+                                case "rapifluor-ms":
                                     chemicalFormulaeC += 17;
                                     chemicalFormulaeH += 23;
                                     chemicalFormulaeN += 5;
                                     chemicalFormulaeO += 2;
                                     break;
-                                case "2AA":
+                                case "2aa":
                                     chemicalFormulaeC += 7;
                                     chemicalFormulaeH += 9;
                                     chemicalFormulaeN += 1;
                                     chemicalFormulaeO += 2;
                                     break;
-                                case "2AB":
+                                case "2ab":
                                     chemicalFormulaeC += 7;
                                     chemicalFormulaeH += 10;
                                     chemicalFormulaeN += 2;
                                     chemicalFormulaeO += 1;
                                     break;
-                                case "Procainamide":
+                                case "procainamide":
                                     chemicalFormulaeC += 13;
                                     chemicalFormulaeH += 23;
                                     chemicalFormulaeN += 3;
                                     chemicalFormulaeO += 1;
                                     break;
-                                case "girP":
+                                case "girp":
                                     chemicalFormulaeC += 7;
                                     chemicalFormulaeH += 10;
                                     chemicalFormulaeN += 3;
                                     chemicalFormulaeO += 1;
                                     break;
-                                case "Custom":
+                                case "custom":
                                     chemicalFormulaeC += options.customReducingCCount;
                                     chemicalFormulaeH += options.customReducingHCount;
                                     chemicalFormulaeN += options.customReducingNCount;
@@ -1614,39 +1616,39 @@ class Program
                             }
                             switch (options.reducedEnd)
                             {
-                                case "Free":
+                                case "free":
                                     observedMass = s + 18.010565m;
                                     theoreticalMass = target + 18.010565m;
                                     break;
-                                case "Reduced":
+                                case "reduced":
                                     observedMass = s + 20.026195m;
                                     theoreticalMass = target + 20.026195m;
                                     break;
-                                case "InstantPC":
+                                case "instantpc":
                                     observedMass = s + 18.010565m + 261.1477m;
                                     theoreticalMass = target + 18.010565m + 261.1477m;
                                     break;
-                                case "Rapifluor-MS":
+                                case "rapifluor-ms":
                                     observedMass = s + 18.010565m + 311.17461m;
                                     theoreticalMass = target + 18.010565m + 311.17461m;
                                     break;
-                                case "2AA":
+                                case "2aa":
                                     observedMass = s + 18.010565m + 121.052774m;
                                     theoreticalMass = target + 18.010565m + 121.052774m;
                                     break;
-                                case "2AB":
+                                case "2ab":
                                     observedMass = s + 18.010565m + 120.068758m;
                                     theoreticalMass = target + 18.010565m + 120.068758m;
                                     break;
-                                case "Procainamide":
+                                case "procainamide":
                                     observedMass = s + 18.010565m + 219.1735574m;
                                     theoreticalMass = target + 18.010565m + 219.1735574m;
                                     break;
-                                case "girP":
+                                case "girp":
                                     observedMass = s + 18.010565m + 134.06405m;
                                     theoreticalMass = target + 18.010565m + 134.06405m;
                                     break;
-                                case "Custom":
+                                case "custom":
                                     observedMass = s + 18.010565m + options.customReducingMass;
                                     theoreticalMass = target + 18.010565m + options.customReducingMass;
                                     break;
@@ -1657,7 +1659,7 @@ class Program
                             // Console.WriteLine(solutionsUpdate);
                             break;
 
-                        case "Permethylated":
+                        case "permethylated":
                             solutions = solutions.Replace("174.089210", "dHex ").Replace("204.099775", "Hex ").Replace("361.173669", "Neu5Ac ").Replace("391.184234", "Neu5Gc ").Replace("245.126324", "HexNAc ").Replace("93.981983", "Phos ").Replace("79.956815", "Sulf ").Replace(",", "").Replace("203.115758", "HexN ").Replace("218.079040", "HexA ").Replace("215.115759", "dHexNAc ").Replace("160.073560", "Pent ").Replace("320.147120", "KDN ").Replace(options.customMono1Mass.ToString(), options.customMono1Name + " ").Replace(options.customMono2Mass.ToString(), options.customMono2Name + " ").Replace(options.customMono3Mass.ToString(), options.customMono3Name + " ").Replace(options.customMono4Mass.ToString(), options.customMono4Name + " ").Replace(options.customMono5Mass.ToString(), options.customMono5Name + " ");
 
                             // Chemical formulae for permethylated
@@ -1766,17 +1768,17 @@ class Program
                             }
                             switch (reducedEnd)
                             {
-                                case "Free":
+                                case "free":
                                     chemicalFormulaeC += 2;
                                     chemicalFormulaeH += 6;
                                     chemicalFormulaeO += 1;
                                     break;
-                                case "Reduced":
+                                case "reduced":
                                     chemicalFormulaeC += 3;
                                     chemicalFormulaeH += 10;
                                     chemicalFormulaeO += 1;
                                     break;
-                                case "Custom":
+                                case "custom":
                                     chemicalFormulaeC += options.customReducingCCount;
                                     chemicalFormulaeH += options.customReducingHCount;
                                     chemicalFormulaeN += options.customReducingNCount;
@@ -1788,15 +1790,15 @@ class Program
                             // Permethylated
                             switch (reducedEnd)
                             {
-                                case "Free":
+                                case "free":
                                     observedMass = s + 18.010565m + 28.031300m;
                                     theoreticalMass = target + 18.010565m + 28.031300m;
                                     break;
-                                case "Reduced":
+                                case "reduced":
                                     observedMass = s + 20.026195m + 42.046950m;
                                     theoreticalMass = target + 20.026195m + 42.046950m;
                                     break;
-                                case "Custom":
+                                case "custom":
                                     observedMass = s + 18.010565m + options.customReducingMass;
                                     theoreticalMass = target + 18.010565m + options.customReducingMass;
                                     break;
@@ -1805,7 +1807,7 @@ class Program
                             }
                             break;
 
-                        case "Peracetylated":
+                        case "peracetylated":
                             solutions = solutions.Replace("230.079038", "dHex ").Replace("288.084517", "Hex ").Replace("417.127110", "Neu5Ac ").Replace("475.132593", "Neu5Gc ").Replace("287.100501", "HexNAc ").Replace("93.981983", "Phos ").Replace("79.956815", "Sulf ").Replace(",", "").Replace("287.100501", "HexN ").Replace("260.053217", "HexA ").Replace("247.105587", "dHexNAc ").Replace("216.063388", "Pent ").Replace("376.100561", "KDN ").Replace(options.customMono1Mass.ToString(), options.customMono1Name + " ").Replace(options.customMono2Mass.ToString(), options.customMono2Name + " ").Replace(options.customMono3Mass.ToString(), options.customMono3Name + " ").Replace(options.customMono4Mass.ToString(), options.customMono4Name + " ").Replace(options.customMono5Mass.ToString(), options.customMono5Name + " ");
                             // peracetylated processing
                             // Chemical formulae for peracetylated
@@ -1914,17 +1916,17 @@ class Program
                             }
                             switch (reducedEnd)
                             {
-                                case "Free":
+                                case "free":
                                     chemicalFormulaeC += 4;
                                     chemicalFormulaeH += 6;
                                     chemicalFormulaeO += 3;
                                     break;
-                                case "Reduced":
+                                case "reduced":
                                     chemicalFormulaeC += 6;
                                     chemicalFormulaeH += 10;
                                     chemicalFormulaeO += 4;
                                     break;
-                                case "Custom":
+                                case "custom":
                                     chemicalFormulaeC += options.customReducingCCount;
                                     chemicalFormulaeH += options.customReducingHCount;
                                     chemicalFormulaeN += options.customReducingNCount;
@@ -1936,15 +1938,15 @@ class Program
                             // Peracetylated
                             switch (reducedEnd)
                             {
-                                case "Free":
+                                case "free":
                                     observedMass = s + 18.010565m + 84.021129m;
                                     theoreticalMass = target + 18.010565m + 84.021129m;
                                     break;
-                                case "Reduced":
+                                case "reduced":
                                     observedMass = s + 20.026195m + 126.031694m;
                                     theoreticalMass = target + 20.026195m + 126.031694m;
                                     break;
-                                case "Custom":
+                                case "custom":
                                     observedMass = s + 18.010565m + options.customReducingMass;
                                     theoreticalMass = target + 18.010565m + options.customReducingMass;
                                     break;

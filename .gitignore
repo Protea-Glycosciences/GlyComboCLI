@@ -377,3 +377,5 @@ GlyComboCLI/Properties/launchSettings.json
 GlyComboCLI/Properties
 GlyComboCLI/obj
 GlyComboCLI/bin
+/GlyComboCLI/GlyComboTest.mzML
+/GlyComboCLI/GlyComboTest_result_SkylineImport.csv
