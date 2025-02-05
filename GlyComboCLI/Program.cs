@@ -120,7 +120,7 @@ public class CommandOptions
     public string? massErrorType {  get; set; }
     public string? file { get; set; }
     public string? customSettings { get; set; }
-    public string? adduct { get; set; }
+    public string? adducts { get; set; }
     public bool? offByOne { get; set; }
 
 }
@@ -321,56 +321,64 @@ class Program
         rootCommand.Description = "A CLI for GlyCombo, allowing rapid assignment of monosaccharide combinations to observed and fragmented precursors in mass spectrometry experiments" + Environment.NewLine + Environment.NewLine + "Example command: GlyComboCLI.exe -F=\".\\example.mzML\" -hMin=1 -hMax=12 -nMin=2 -nMax=8 -sMin=0 -sMax=2 -fMin=0 -fMax=3 -gMin=0 -gMax=2 -D=\"Native\" -R=\"Reduced\" -T=Da -E=\"0.6\"" + Environment.NewLine + Environment.NewLine + "Questions, comments and bug reports:" + Environment.NewLine + "https://github.com/Protea-Glycosciences/GlyCombiner" + Environment.NewLine + "chris@proteaglyco.com" + Environment.NewLine + "Glycombiner release: v0.0";
         rootCommand.Handler = CommandHandler.Create<CommandOptions>(options =>
         {
-
-            // Derivatisation
-            options.derivatisation = options.derivatisation.ToLower();
-            switch (options.derivatisation)
+            if (options.derivatisation != null)
             {
-                case "native":
-                case "permethylated":
-                case "peracetylated":
-                    Console.WriteLine($"The derivatisation is {options.derivatisation}");
-                    break;
+                // Derivatisation
+                options.derivatisation = options.derivatisation.ToLower();
+                switch (options.derivatisation)
+                {
+                    case "native":
+                    case "permethylated":
+                    case "peracetylated":
+                        Console.WriteLine($"The derivatisation is {options.derivatisation}");
+                        break;
 
-                default:
-                    Console.WriteLine($"{options.derivatisation} is not a valid derivatisation. GlyCombo supports Native, Permethylated and Peracetylated derivitisations. Search terminated.");
+                    default:
+                        Console.WriteLine($"{options.derivatisation} is not a valid derivatisation. GlyCombo supports Native, Permethylated and Peracetylated derivitisations. Search terminated.");
+                        return;
+                }
+            }
+
+            if (options.reducedEnd != null)
+            {
+                // Reducing End
+                options.reducedEnd = options.reducedEnd.ToLower();
+                switch (options.reducedEnd)
+                {
+                    case "free":
+                    case "reduced":
+                    case "instantPC":
+                    case "rapifluor-MS":
+                    case "2-aminobenzoic acid":
+                    case "2-aminobenzamide":
+                    case "procainamide":
+                    case "girard's reagent p":
+                        Console.WriteLine($"The reduced end is {options.reducedEnd}");
+                        break;
+
+                    case "Custom":
+                        Console.WriteLine($"The reduced end is {options.reducedEnd}");
+                        break;
+
+                    default:
+                        Console.WriteLine($"{options.reducedEnd} is not a valid option. GlyCombo supports Free, Reduced, InstantPC, Rapifluor-MS, 2-aminobenzoic acid, 2-aminobenzamide, Procainamide, Girard's reagent P, and Custom. Search terminated.");
+                        return;
+                }
+            }
+
+            if (options.massErrorType != null)
+            {
+                // Mass Error Type
+                options.massErrorType = options.massErrorType.ToLower();
+                if (options.massErrorType == "da" || options.massErrorType == "ppm")
+                {
+                    Console.WriteLine($"The mass error is {options.massError} {options.massErrorType}");
+                }
+                else
+                {
+                    Console.WriteLine($"Mass error and mass error type must be selected. {options.massErrorType} is not a valid option.");
                     return;
-            }
-
-            // Reducing End
-            options.reducedEnd = options.reducedEnd.ToLower();
-            switch (options.reducedEnd)
-            {
-                case "free":
-                case "reduced":
-                case "instantPC":
-                case "rapifluor-MS":
-                case "2-aminobenzoic acid":
-                case "2-aminobenzamide":
-                case "procainamide":
-                case "girard's reagent p":
-                    Console.WriteLine($"The reduced end is {options.reducedEnd}");
-                    break;
-
-                case "Custom":
-                    Console.WriteLine($"The reduced end is {options.reducedEnd}");
-                    break;
-
-                default:
-                    Console.WriteLine($"{options.reducedEnd} is not a valid option. GlyCombo supports Free, Reduced, InstantPC, Rapifluor-MS, 2-aminobenzoic acid, 2-aminobenzamide, Procainamide, Girard's reagent P, and Custom. Search terminated.");
-                    return;
-            }
-
-            // Mass Error Type
-            options.massErrorType = options.massErrorType.ToLower();
-            if (options.massErrorType == "da" || options.massErrorType == "ppm")
-            {
-                Console.WriteLine($"The mass error is {options.massError} {options.massErrorType}");
-            }
-            else
-            {
-                Console.WriteLine($"Mass error and mass error type must be selected. {options.massErrorType} is not a valid option.");
-                return;
+                }
             }
 
             async Task mzMLProcess()
@@ -577,8 +585,6 @@ class Program
                 }
                 else
                 {
-                    //TODO: Add back in multiple files then : Provide list of all filenames provided in the openFileDialog, without the directory name
-
                     // Provide number of scans for each filename
                     Console.WriteLine("File " + options.file + " has completed uploading with a total number of " + scans.Count + " MS2 scans identified.");
                 }
@@ -859,15 +865,15 @@ class Program
                     targetAdducts = new List<decimal>();
 
                     // Only trigger this if something other than M is selected
-                    if (options.adduct != null)
+                    if (options.adducts != null)
                     {
                         // mzML input has been processed as de / protonated to generate a neutral mass list, so adducts offset is +/- 1 Da for the respective negative/positive adducts
                         // We also don't bother with doing M, M+H, and M-H because they are all the same after mzML processing (M+H and M-H become M)
                         if (fileExtension == ".mzML")
                         {
-
+                            // This all needs to be revised to find if the options.adducts CONTAINS the adduct text, rather than ==. This is because people can submit more than one adduct.
                             // Subtracting H- from all targets and saving that as a new list
-                            if (options.adduct == "MH-" || options.adduct == "M" || options.adduct == "MH+")
+                            if (options.adducts == "MH-" || options.adducts == "M" || options.adducts == "MH+")
                             {
                                 searchRepeats += 1;
                                 targetsToAdd = targetAdductsProcessing.Count;
@@ -877,7 +883,7 @@ class Program
                                 }
                             }
                             // M+COOH adduct calculation
-                            if (options.adduct == "MFA+")
+                            if (options.adducts == "MFA+")
                             {
                                 searchRepeats += 1;
                                 targetsToAdd = targetAdductsProcessing.Count;
@@ -887,7 +893,7 @@ class Program
                                 }
                             }
                             // M+acetic acid adduct calculation
-                            if (options.adduct == "MAA+")
+                            if (options.adducts == "MAA+")
                             {
                                 searchRepeats += 1;
                                 targetsToAdd = targetAdductsProcessing.Count;
@@ -897,7 +903,7 @@ class Program
                                 }
                             }
                             // M+TFA adduct calculation
-                            if (options.adduct == "MTFA+")
+                            if (options.adducts == "MTFA+")
                             {
                                 searchRepeats += 1;
                                 targetsToAdd = targetAdductsProcessing.Count;
@@ -907,17 +913,18 @@ class Program
                                 }
                             }
                             // M+Na adduct calculation
-                            if (options.adduct == "MNa+")
+                            if (options.adducts == "MNa+")
                             {
                                 searchRepeats += 1;
                                 targetsToAdd = targetAdductsProcessing.Count;
+                                // This runs to completion
                                 for (int o = 0; o < targetsToAdd; o++)
                                 {
                                     targetAdducts.Add(targetAdductsProcessing[o] - (decimal)22.989218 + (decimal)1.007276);
                                 }
                             }
                             // M+K adduct calculation
-                            if (options.adduct == "MK+")
+                            if (options.adducts == "MK+")
                             {
                                 searchRepeats += 1;
                                 targetsToAdd = targetAdductsProcessing.Count;
@@ -927,7 +934,7 @@ class Program
                                 }
                             }
                             // M+NH4 adduct calculation
-                            if (options.adduct == "MNH4+")
+                            if (options.adducts == "MNH4+")
                             {
                                 searchRepeats += 1;
                                 targetsToAdd = targetAdductsProcessing.Count;
@@ -937,7 +944,7 @@ class Program
                                 }
                             }
                             // Custom adduct calculcation
-                            if (options.customAdductMass != null)
+                            if (options.customAdductMass > 0)
                             {
                                 searchRepeats += 1;
                                 decimal adductCustom;
@@ -960,13 +967,13 @@ class Program
                                     targetAdducts.Add(targetAdductsProcessing[o] - adductCustom);
                                 }
                             }
-                            targets = targetAdducts;
                         }
+                        targets = targetAdducts;
                         // Text input is singly charged m/z values that are observed via experiments like MALDI-MS of permethylated glycans so no modification of mass is needed.
                         if (fileExtension == ".txt")
                         {
                             // Subtracting H- from all targets and saving that as a new list
-                            if (options.adduct == "MH-")
+                            if (options.adducts == "MH-")
                             {
                                 targetsToAdd = targetAdductsProcessing.Count;
                                 for (int o = 0; o < targetsToAdd; o++)
@@ -975,7 +982,7 @@ class Program
                                 }
                             }
                             // Appending the list with the original text if the user has M selected
-                            if (options.adduct == "M")
+                            if (options.adducts == "M")
                             {
                                 targetsToAdd = targetAdductsProcessing.Count;
                                 for (int o = 0; o < targetsToAdd; o++)
@@ -984,7 +991,7 @@ class Program
                                 }
                             }
                             // M+COOH adduct calculation
-                            if (options.adduct == "MFA-")
+                            if (options.adducts == "MFA-")
                             {
                                 targetsToAdd = targetAdductsProcessing.Count;
                                 for (int o = 0; o < targetsToAdd; o++)
@@ -993,7 +1000,7 @@ class Program
                                 }
                             }
                             // M+acetic acid adduct calculation
-                            if (options.adduct == "MAA-")
+                            if (options.adducts == "MAA-")
                             {
                                 targetsToAdd = targetAdductsProcessing.Count;
                                 for (int o = 0; o < targetsToAdd; o++)
@@ -1002,7 +1009,7 @@ class Program
                                 }
                             }
                             // M+TFA adduct calculation
-                            if (options.adduct == "MTFA-")
+                            if (options.adducts == "MTFA-")
                             {
                                 targetsToAdd = targetAdductsProcessing.Count;
                                 for (int o = 0; o < targetsToAdd; o++)
@@ -1011,7 +1018,7 @@ class Program
                                 }
                             }
                             // M+H adduct calculation
-                            if (options.adduct == "MH+")
+                            if (options.adducts == "MH+")
                             {
                                 targetsToAdd = targetAdductsProcessing.Count;
                                 for (int o = 0; o < targetsToAdd; o++)
@@ -1020,7 +1027,7 @@ class Program
                                 }
                             }
                             // M+Na adduct calculation
-                            if (options.adduct == "MNa+")
+                            if (options.adducts == "MNa+")
                             {
                                 targetsToAdd = targetAdductsProcessing.Count;
                                 for (int o = 0; o < targetsToAdd; o++)
@@ -1029,7 +1036,7 @@ class Program
                                 }
                             }
                             // M+K adduct calculation
-                            if (options.adduct == "MK+")
+                            if (options.adducts == "MK+")
                             {
                                 targetsToAdd = targetAdductsProcessing.Count;
                                 for (int o = 0; o < targetsToAdd; o++)
@@ -1038,7 +1045,7 @@ class Program
                                 }
                             }
                             // M+NH4 adduct calculation
-                            if (options.adduct == "MNH4+")
+                            if (options.adducts == "MNH4+")
                             {
                                 targetsToAdd = targetAdductsProcessing.Count;
                                 for (int o = 0; o < targetsToAdd; o++)
@@ -1047,7 +1054,7 @@ class Program
                                 }
                             }
                             // Custom adduct calculcation
-                            if (options.customAdductMass != null)
+                            if (options.customAdductMass > 0)
                             {
                                 targetsToAdd = targetAdductsProcessing.Count;
                                 for (int o = 0; o < targetsToAdd; o++)
@@ -1055,8 +1062,8 @@ class Program
                                     targetAdducts.Add(targetAdductsProcessing[o] - options.customAdductMass);
                                 }
                             }
-                            targets = targetAdducts;
                         }
+
                     }
                     // If the user doesn't specify adducts, add straight to the list for searching 
                     else
@@ -1074,6 +1081,7 @@ class Program
                     // For enabling off-by-one errors. Thermo is pretty good at correcting the selected ion m/z when it picks an isotopic distribution, but might be useful for others
                     if (options.offByOne == true)
                     {
+                        Console.WriteLine("Made it to offByOne");
                         searchRepeats += 1;
                         // For each target in the list, remove one hydrogen to account for the C13 isotope being picked instead of monoisotopic (negative mode only)
                         targetsToAdd = targets.Count;
@@ -1086,6 +1094,7 @@ class Program
                     // Early processing of target list, breaking it down so that the reducing ends are removed
                     if (options.derivatisation == "native")
                     {
+                        Console.WriteLine("Made it to deriv");
                         // Assuming `options.reducingEnd` is a string with values like "Free", "Reduced", etc.
                         switch (options.reducedEnd)
                         {
@@ -1311,7 +1320,7 @@ class Program
                 }
                 submitOutput += "## Adducts: Adduct1, Adduct2" + Environment.NewLine;
                 //TODO Adduct Selection, check that the adducts are ok then send error if not. It used to take checkboxes
-                submitOutput += options.adduct + Environment.NewLine;
+                submitOutput += options.adducts + Environment.NewLine;
                 File.WriteAllText(
                     Path.Combine(
                         Path.GetDirectoryName(outputFilePath),

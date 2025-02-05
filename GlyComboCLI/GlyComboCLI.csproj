@@ -5,6 +5,11 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Copyright>Protea Glycosciences Pty Ltd 2025</Copyright>
+    <Description>GlyComboCLI is an open source command line interface for combinatorial glycan composition determination to identify glycans in MS acquisitions of glycan-containing samples in text or mzML formats. This application enables rapid extraction of precursor m/z values from mzML files, a vendor-neutral format that ensures cross-platform compatibility.</Description>
+    <Authors>Maia I Kelly, Christopher Ashwood</Authors>
+    <Company>Protea Glycosciences Pty Ltd</Company>
+    <PackageProjectUrl>https://github.com/Protea-Glycosciences/GlyComboCLI</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>
