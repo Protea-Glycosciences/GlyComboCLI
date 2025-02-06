@@ -871,9 +871,12 @@ class Program
                         // We also don't bother with doing M, M+H, and M-H because they are all the same after mzML processing (M+H and M-H become M)
                         if (fileExtension == ".mzML")
                         {
+
                             // This all needs to be revised to find if the options.adducts CONTAINS the adduct text, rather than ==. This is because people can submit more than one adduct.
                             // Subtracting H- from all targets and saving that as a new list
-                            if (options.adducts == "MH-" || options.adducts == "M" || options.adducts == "MH+")
+                            if (options.adducts.Split(",").Select(a => a.Trim()).Contains("MH-") ||
+                            options.adducts.Split(",").Select(a => a.Trim()).Contains("Mneutral") ||
+                            options.adducts.Split(",").Select(a => a.Trim()).Contains("MH+"))
                             {
                                 searchRepeats += 1;
                                 targetsToAdd = targetAdductsProcessing.Count;
@@ -883,7 +886,7 @@ class Program
                                 }
                             }
                             // M+COOH adduct calculation
-                            if (options.adducts == "MFA+")
+                            if (options.adducts.Split(",").Select(a => a.Trim()).Contains("MFA+"))
                             {
                                 searchRepeats += 1;
                                 targetsToAdd = targetAdductsProcessing.Count;
@@ -893,7 +896,7 @@ class Program
                                 }
                             }
                             // M+acetic acid adduct calculation
-                            if (options.adducts == "MAA+")
+                            if (options.adducts.Split(",").Select(a => a.Trim()).Contains("MAA+"))
                             {
                                 searchRepeats += 1;
                                 targetsToAdd = targetAdductsProcessing.Count;
@@ -903,7 +906,7 @@ class Program
                                 }
                             }
                             // M+TFA adduct calculation
-                            if (options.adducts == "MTFA+")
+                            if (options.adducts.Split(",").Select(a => a.Trim()).Contains("MTFA+"))
                             {
                                 searchRepeats += 1;
                                 targetsToAdd = targetAdductsProcessing.Count;
@@ -913,7 +916,7 @@ class Program
                                 }
                             }
                             // M+Na adduct calculation
-                            if (options.adducts == "MNa+")
+                            if (options.adducts.Split(",").Select(a => a.Trim()).Contains("MNa+"))
                             {
                                 searchRepeats += 1;
                                 targetsToAdd = targetAdductsProcessing.Count;
@@ -924,7 +927,7 @@ class Program
                                 }
                             }
                             // M+K adduct calculation
-                            if (options.adducts == "MK+")
+                            if (options.adducts.Split(",").Select(a => a.Trim()).Contains("MK+"))
                             {
                                 searchRepeats += 1;
                                 targetsToAdd = targetAdductsProcessing.Count;
@@ -934,7 +937,7 @@ class Program
                                 }
                             }
                             // M+NH4 adduct calculation
-                            if (options.adducts == "MNH4+")
+                            if (options.adducts.Split(",").Select(a => a.Trim()).Contains("MNH4+"))
                             {
                                 searchRepeats += 1;
                                 targetsToAdd = targetAdductsProcessing.Count;
@@ -968,12 +971,11 @@ class Program
                                 }
                             }
                         }
-                        targets = targetAdducts;
                         // Text input is singly charged m/z values that are observed via experiments like MALDI-MS of permethylated glycans so no modification of mass is needed.
                         if (fileExtension == ".txt")
                         {
                             // Subtracting H- from all targets and saving that as a new list
-                            if (options.adducts == "MH-")
+                            if (options.adducts.Split(',').Select(a => a.Trim()).Contains("MH-"))
                             {
                                 targetsToAdd = targetAdductsProcessing.Count;
                                 for (int o = 0; o < targetsToAdd; o++)
@@ -982,7 +984,8 @@ class Program
                                 }
                             }
                             // Appending the list with the original text if the user has M selected
-                            if (options.adducts == "M")
+                            // Fix this later, just the adduct M will be found incorrectly with any M, e.g. MH+
+                            if (options.adducts.Split(',').Select(a => a.Trim()).Contains("MNeutral"))
                             {
                                 targetsToAdd = targetAdductsProcessing.Count;
                                 for (int o = 0; o < targetsToAdd; o++)
@@ -991,7 +994,7 @@ class Program
                                 }
                             }
                             // M+COOH adduct calculation
-                            if (options.adducts == "MFA-")
+                            if (options.adducts.Split(',').Select(a => a.Trim()).Contains("MFA-"))
                             {
                                 targetsToAdd = targetAdductsProcessing.Count;
                                 for (int o = 0; o < targetsToAdd; o++)
@@ -1000,7 +1003,7 @@ class Program
                                 }
                             }
                             // M+acetic acid adduct calculation
-                            if (options.adducts == "MAA-")
+                            if (options.adducts.Split(',').Select(a => a.Trim()).Contains("MAA-"))
                             {
                                 targetsToAdd = targetAdductsProcessing.Count;
                                 for (int o = 0; o < targetsToAdd; o++)
@@ -1009,7 +1012,7 @@ class Program
                                 }
                             }
                             // M+TFA adduct calculation
-                            if (options.adducts == "MTFA-")
+                            if (options.adducts.Split(',').Select(a => a.Trim()).Contains("MTFA-"))
                             {
                                 targetsToAdd = targetAdductsProcessing.Count;
                                 for (int o = 0; o < targetsToAdd; o++)
@@ -1018,7 +1021,7 @@ class Program
                                 }
                             }
                             // M+H adduct calculation
-                            if (options.adducts == "MH+")
+                            if (options.adducts.Split(',').Select(a => a.Trim()).Contains("MH+"))
                             {
                                 targetsToAdd = targetAdductsProcessing.Count;
                                 for (int o = 0; o < targetsToAdd; o++)
@@ -1027,7 +1030,7 @@ class Program
                                 }
                             }
                             // M+Na adduct calculation
-                            if (options.adducts == "MNa+")
+                            if (options.adducts.Split(',').Select(a => a.Trim()).Contains("MNa+"))
                             {
                                 targetsToAdd = targetAdductsProcessing.Count;
                                 for (int o = 0; o < targetsToAdd; o++)
@@ -1036,7 +1039,7 @@ class Program
                                 }
                             }
                             // M+K adduct calculation
-                            if (options.adducts == "MK+")
+                            if (options.adducts.Split(',').Select(a => a.Trim()).Contains("MK+"))
                             {
                                 targetsToAdd = targetAdductsProcessing.Count;
                                 for (int o = 0; o < targetsToAdd; o++)
@@ -1045,7 +1048,7 @@ class Program
                                 }
                             }
                             // M+NH4 adduct calculation
-                            if (options.adducts == "MNH4+")
+                            if (options.adducts.Split(',').Select(a => a.Trim()).Contains("MNH4+"))
                             {
                                 targetsToAdd = targetAdductsProcessing.Count;
                                 for (int o = 0; o < targetsToAdd; o++)
@@ -1064,6 +1067,7 @@ class Program
                             }
                         }
 
+                        targets = targetAdducts;
                     }
                     // If the user doesn't specify adducts, add straight to the list for searching 
                     else
@@ -1081,7 +1085,6 @@ class Program
                     // For enabling off-by-one errors. Thermo is pretty good at correcting the selected ion m/z when it picks an isotopic distribution, but might be useful for others
                     if (options.offByOne == true)
                     {
-                        Console.WriteLine("Made it to offByOne");
                         searchRepeats += 1;
                         // For each target in the list, remove one hydrogen to account for the C13 isotope being picked instead of monoisotopic (negative mode only)
                         targetsToAdd = targets.Count;
@@ -1094,7 +1097,6 @@ class Program
                     // Early processing of target list, breaking it down so that the reducing ends are removed
                     if (options.derivatisation == "native")
                     {
-                        Console.WriteLine("Made it to deriv");
                         // Assuming `options.reducingEnd` is a string with values like "Free", "Reduced", etc.
                         switch (options.reducedEnd)
                         {
@@ -1665,8 +1667,6 @@ class Program
                                 default:
                                     break;
                             }
-                            // No longer needed, was debugging
-                            // Console.WriteLine(solutionsUpdate);
                             break;
 
                         case "permethylated":
@@ -2020,10 +2020,6 @@ class Program
                         chemicalFormulaeO += (customMono5Count * options.customMono5OCount);
                         solutionsUpdate += "(" + options.customMono5Name + ")" + customMono5Count + " ";
                     }
-
-                    // Working fine so far
-                    // Console.WriteLine(solutionsUpdate);
-
 
                     // Preparation to export a chemical formulae in a format compatible with Skyline
                     string chemicalFormula = "C" + chemicalFormulaeC + "H" + chemicalFormulaeH + "N" + chemicalFormulaeN + "O" + chemicalFormulaeO + "P" + chemicalFormulaeP + "S" + chemicalFormulaeS;
