@@ -546,14 +546,10 @@ class Program
                         {
                             // Convert precursor m/z and z to obtain neutral precursor mass
                             if (polarity == "negative") {
-                                // Working fine
-                                // Console.WriteLine("negative precursor" + precursor);
                                 neutralPrecursorListmzml += Convert.ToString(charge * precursor + (charge * 1.007276m)) + Environment.NewLine;
                                 charge = -charge;
                             }
                             else if (polarity == "positive") {
-                                // Working fine
-                                // Console.WriteLine("positive precursor" + precursor);
                                 neutralPrecursorListmzml += Convert.ToString(charge * precursor - (charge * 1.007276m)) + Environment.NewLine;
                             }
                             // Put the scan value into a list of scan numbers that feature MS2.
@@ -565,7 +561,6 @@ class Program
                             // Add TIC to a list for the end report
                             TICs.Add(TIC);
                             // Add stripped file name to the index
-                            //TODO: This is only currently with one file. Add back in multiple
                             string fileName = options.file.Substring(options.file.LastIndexOf('\\') + 1);
                             files.Add(fileName);
                         }
@@ -1072,7 +1067,7 @@ class Program
                     // If the user doesn't specify adducts, add straight to the list for searching 
                     else
                     {
-                        Console.WriteLine("Adducts is null");
+                        Console.WriteLine("No adducts specified, using defaults");
                         searchRepeats += 1;
                         targetsToAdd = targetAdductsProcessing.Count;
                         for (int o = 0; o < targetsToAdd; o++)
@@ -1204,7 +1199,7 @@ class Program
                 }
             }
 
-                void glyComboProcess()
+            void glyComboProcess()
             {
                 iterations = 0;
                 Sum_up(numbers, targets, options);
@@ -1248,7 +1243,6 @@ class Program
                 string fileExtension = Path.GetExtension(options.file);
                 string outputFilePath = Path.Combine(
                     Path.GetDirectoryName(options.file),
-                    //TODO: Check file extension
                     Path.GetFileNameWithoutExtension(options.file) + "_result" + ".csv"
                 );
 
@@ -1275,7 +1269,6 @@ class Program
 
                 // Converting precursor list to series of strings for subsequent confirmation
                 string combinedTargets = string.Join(Environment.NewLine, targets.ToArray());
-                //TODO put these back to the submitOutput
                 string submitOutput = Environment.NewLine + "GlyCombo search output" + Environment.NewLine;
                 submitOutput += "<Error tolerance> " + options.massError + "," + options.massErrorType + Environment.NewLine;
                 submitOutput += "<Reducing end> " + options.reducedEnd + Environment.NewLine;
@@ -1321,7 +1314,6 @@ class Program
 
                 }
                 submitOutput += "## Adducts: Adduct1, Adduct2" + Environment.NewLine;
-                //TODO Adduct Selection, check that the adducts are ok then send error if not. It used to take checkboxes
                 submitOutput += options.adducts + Environment.NewLine;
                 File.WriteAllText(
                     Path.Combine(
@@ -2041,7 +2033,6 @@ class Program
 
                         // mzml input therefore output needs to be include scan #, charge, RT and TIC values.
                         // Adducts multiply the target list, this step ensures that we can assign metadata to all of the targets (otherwise it looks for targets that aren't there)
-                        //TODO find this variable
                         for (int z = 0; z < searchRepeats; z++)
                         {
                             int index = i % scans.Count;
