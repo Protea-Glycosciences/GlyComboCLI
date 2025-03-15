@@ -1219,6 +1219,13 @@ class Program
                 // For each target in the list
                 for (int i = 0; i < targets.Count; i++)
                 {
+                    // Basically, for each percentile from 100, write the percent completion, otherwise we're going to waste a lot of time printing the progress
+                    int currentPercentage = (int)Math.Floor((double)i / targets.Count * 100);
+                    // Only print when the percentage changes
+                    if (currentPercentage != (int)Math.Floor((double)(i - 1) / targets.Count * 100) && currentPercentage < 100)
+                    {
+                        Console.WriteLine(DateTime.Now + " Progress: " + currentPercentage + "%");
+                    }
                     bool targetFound = false;
                     // Define the upper and lower error tolerances for search
                     if (options.massErrorType == "da")
