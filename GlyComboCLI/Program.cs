@@ -119,7 +119,6 @@ public class CommandOptions
     public decimal massError {  get; set; }
     public string? massErrorType {  get; set; }
     public string? file { get; set; }
-    public string? customSettings { get; set; }
     public string? adducts { get; set; }
     public bool? offByOne { get; set; }
 
@@ -315,8 +314,6 @@ class Program
         new Option<string>(new[] {"--massErrorType", "-T" }, "Mass error type can either be Da or ppm"),
         new Option<bool>(new[] {"--offByOne", "-O" }, "if set to true, enables off-by-one searching for cases of incorrect monoisotopic precursor determination"),
         new Option<string>(new[] {"--file", "-F" }, "Path to the input file, either .mzml or .txt (mass list)"), // File upload option
-        // TO DO: Add steps to process the customSettings file
-        new Option<string>(new[] {"--customSettings", "-C" }, "Path to custom settings")
     };
 
         rootCommand.Description = "A CLI for GlyCombo, allowing rapid assignment of monosaccharide combinations to observed and fragmented precursors in mass spectrometry experiments" + Environment.NewLine + Environment.NewLine + "Example command: GlyComboCLI.exe -F=\".\\example.mzML\" -hMin=1 -hMax=12 -nMin=2 -nMax=8 -sMin=0 -sMax=2 -fMin=0 -fMax=3 -gMin=0 -gMax=2 -D=\"Native\" -R=\"Reduced\" -T=Da -E=\"0.6\"" + Environment.NewLine + Environment.NewLine + "Questions, comments and bug reports:" + Environment.NewLine + "https://github.com/Protea-Glycosciences/GlyComboCLI" + Environment.NewLine + "chris@proteaglyco.com" + Environment.NewLine + "GlyComboCLI release: v0.0";
