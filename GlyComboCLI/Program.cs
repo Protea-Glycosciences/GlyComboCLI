@@ -207,48 +207,48 @@ class Program
     {
 
         // Regular monosaccharide flags
-        new Option<int>(new[] {"--hexMin", "-hMin" }, "Minimum hexose count"),
-        new Option<int>(new[] {"--hexMax", "-hMax" }, "Maximum hexose count"),
-        new Option<int>(new[] {"--hexNAcMin", "-nMin" }, "Minimum N-acetyl hexosamine count"),
-        new Option<int>(new[] {"--hexNAcMax", "-nMax" }, "Maximum N-acetyl hexosamine count"),
-        new Option<int>(new[] {"--dHexMin", "-fMin" }, "Minimum deoxyhexose count"),
-        new Option<int>(new[] {"--dHexMax", "-fMax" }, "Maximum deoxyhexose count"),
-        new Option<int>(new[] {"--hexAMin", "-aMin" }, "Minimum hexuronic acid count"),
-        new Option<int>(new[] {"--hexAMax", "-aMax" }, "Maximum hexuronic acid count"),
-        new Option<int>(new[] {"--hexNMin", "-xMin" }, "Minimum hexosamine count"),
-        new Option<int>(new[] {"--hexNMax", "-xMax" }, "Maximum hexosamine count"),
-        new Option<int>(new[] {"--pentMin", "-pMin" }, "Minimum pentose count"),
-        new Option<int>(new[] {"--pentMax", "-pMax" }, "Maximum pentose count"),
-        new Option<int>(new[] {"--kdnMin", "-kMin" }, "Minimum KDN count"),
-        new Option<int>(new[] {"--kdnMax", "-kMax" }, "Maximum KDN count"),
-        new Option<int>(new[] {"--neu5AcMin", "-sMin" }, "Minimum N-acetyl-neuraminic acid count"),
-        new Option<int>(new[] {"--neu5AcMax", "-sMax" }, "Maximum N-acetyl-neuraminic acid count"),
-        new Option<int>(new[] {"--neu5GcMin", "-gMin" }, "Minimum N-glycolyl-neuraminic acid count"),
-        new Option<int>(new[] {"--neu5GcMax", "-gMax" }, "Maximum N-glycolyl-neuraminic acid count"),
-        new Option<int>("--phosMin", "Minimum phosphate count"),
-        new Option<int>("--phosMax", "Maximum phosphate count"),
-        new Option<int>("--sulfMin", "Minimum sulfate count"),
-        new Option<int>("--sulfMax", "Maximum sulfate count"),
-        new Option<int>("--dHexNAcMin", "Minimum N-acetyl deoxyhexose count"),
-        new Option<int>("--dHexNAcMax", "Maximum N-acetyl deoxyhexose count"),
-        new Option<int>("--lNeuAcMin", "Minimum lactonised N-acetyl-neuraminic acid (a2,3) count"),
-        new Option<int>("--lNeuAcMax", "Maximum lactonised N-acetyl-neuraminic acid (a2,3) count"),
-        new Option<int>("--eeNeuAcMin", "Minimum ethyl esterified N-acetyl-neuraminic acid (a2,6) count"),
-        new Option<int>("--eeNeuAcMax", "Maximum ethyl esterified N-acetyl-neuraminic acid (a2,6) count"),
-        new Option<int>("--dNeuAcMin", "Minimum dimethylamidated N-acetyl-neuraminic acid (a2,6) count"),
-        new Option<int>("--dNeuAcMax", "Maximum dimethylamidated N-acetyl-neuraminic acid (a2,6) count"),
-        new Option<int>("--amNeuAcMin", "Minimum ammonia amidated N-acetyl-neuraminic acid (a2,3) count"),
-        new Option<int>("--amNeuAcMax", "Maximum ammonia amidated N-acetyl-neuraminic acid (a2,3) count"),
-        new Option<int>("--acetylMin", "Minimum acetylation count"),
-        new Option<int>("--acetylMax", "Maximum acetylation count"),
-        new Option<int>("--lNeuGcMin", "Minimum lactonised N-acetyl-neuraminic acid (a2,3) count"),
-        new Option<int>("--lNeuGcMax", "Maximum lactonised N-acetyl-neuraminic acid (a2,3) count"),
-        new Option<int>("--eeNeuGcMin", "Minimum ethyl esterified N-glycolyl-neuraminic acid (a2,6) count"),
-        new Option<int>("--eeNeuGcMax", "Maximum ethyl esterified N-glycolyl-neuraminic acid (a2,6) count"),
-        new Option<int>("--dNeuGcMin", "Minimum dimethylamidated N-glycolyl-neuraminic acid (a2,6) count"),
-        new Option<int>("--dNeuGcMax", "Maximum dimethylamidated N-glycolyl-neuraminic acid (a2,6) count"),
-        new Option<int>("--amNeuGcMin", "Minimum ammonia amidated N-glycolyl-neuraminic acid (a2,3) count"),
-        new Option<int>("--amNeuGcMax", "Maximum ammonia amidated N-glycolyl-neuraminic acid (a2,3) count"),
+        new Option<int>(new[] {"--hexMin", "-hMin" }, "Minimum hexose count (default:0)"),
+        new Option<int>(new[] {"--hexMax", "-hMax" }, "Maximum hexose count (default:0)"),
+        new Option<int>(new[] {"--hexNAcMin", "-nMin" }, "Minimum N-acetyl hexosamine count (default:0)"),
+        new Option<int>(new[] {"--hexNAcMax", "-nMax" }, "Maximum N-acetyl hexosamine count (default:0)"),
+        new Option<int>(new[] {"--dHexMin", "-fMin" }, "Minimum deoxyhexose count (default:0)"),
+        new Option<int>(new[] {"--dHexMax", "-fMax" }, "Maximum deoxyhexose count (default:0)"),
+        new Option<int>(new[] {"--hexAMin", "-aMin" }, "Minimum hexuronic acid count (default:0)"),
+        new Option<int>(new[] {"--hexAMax", "-aMax" }, "Maximum hexuronic acid count (default:0)"),
+        new Option<int>(new[] {"--hexNMin", "-xMin" }, "Minimum hexosamine count (default:0)"),
+        new Option<int>(new[] {"--hexNMax", "-xMax" }, "Maximum hexosamine count (default:0)"),
+        new Option<int>(new[] {"--pentMin", "-pMin" }, "Minimum pentose count (default:0)"),
+        new Option<int>(new[] {"--pentMax", "-pMax" }, "Maximum pentose count (default:0)"),
+        new Option<int>(new[] {"--kdnMin", "-kMin" }, "Minimum KDN count (default:0)"),
+        new Option<int>(new[] {"--kdnMax", "-kMax" }, "Maximum KDN count (default:0)"),
+        new Option<int>(new[] {"--neu5AcMin", "-sMin" }, "Minimum N-acetyl-neuraminic acid count (default:0)"),
+        new Option<int>(new[] {"--neu5AcMax", "-sMax" }, "Maximum N-acetyl-neuraminic acid count (default:0)"),
+        new Option<int>(new[] {"--neu5GcMin", "-gMin" }, "Minimum N-glycolyl-neuraminic acid count (default:0)"),
+        new Option<int>(new[] {"--neu5GcMax", "-gMax" }, "Maximum N-glycolyl-neuraminic acid count (default:0)"),
+        new Option<int>("--phosMin", "Minimum phosphate count (default:0)"),
+        new Option<int>("--phosMax", "Maximum phosphate count (default:0)"),
+        new Option<int>("--sulfMin", "Minimum sulfate count (default:0)"),
+        new Option<int>("--sulfMax", "Maximum sulfate count (default:0)"),
+        new Option<int>("--dHexNAcMin", "Minimum N-acetyl deoxyhexose count (default:0)"),
+        new Option<int>("--dHexNAcMax", "Maximum N-acetyl deoxyhexose count (default:0)"),
+        new Option<int>("--lNeuAcMin", "Minimum lactonised N-acetyl-neuraminic acid (a2,3) count (default:0)"),
+        new Option<int>("--lNeuAcMax", "Maximum lactonised N-acetyl-neuraminic acid (a2,3) count (default:0)"),
+        new Option<int>("--eeNeuAcMin", "Minimum ethyl esterified N-acetyl-neuraminic acid (a2,6) count (default:0)"),
+        new Option<int>("--eeNeuAcMax", "Maximum ethyl esterified N-acetyl-neuraminic acid (a2,6) count (default:0)"),
+        new Option<int>("--dNeuAcMin", "Minimum dimethylamidated N-acetyl-neuraminic acid (a2,6) count (default:0)"),
+        new Option<int>("--dNeuAcMax", "Maximum dimethylamidated N-acetyl-neuraminic acid (a2,6) count (default:0)"),
+        new Option<int>("--amNeuAcMin", "Minimum ammonia amidated N-acetyl-neuraminic acid (a2,3) count (default:0)"),
+        new Option<int>("--amNeuAcMax", "Maximum ammonia amidated N-acetyl-neuraminic acid (a2,3) count (default:0)"),
+        new Option<int>("--acetylMin", "Minimum acetylation count (default:0)"),
+        new Option<int>("--acetylMax", "Maximum acetylation count (default:0)"),
+        new Option<int>("--lNeuGcMin", "Minimum lactonised N-acetyl-neuraminic acid (a2,3) count (default:0)"),
+        new Option<int>("--lNeuGcMax", "Maximum lactonised N-acetyl-neuraminic acid (a2,3) count (default:0)"),
+        new Option<int>("--eeNeuGcMin", "Minimum ethyl esterified N-glycolyl-neuraminic acid (a2,6) count (default:0)"),
+        new Option<int>("--eeNeuGcMax", "Maximum ethyl esterified N-glycolyl-neuraminic acid (a2,6) count (default:0)"),
+        new Option<int>("--dNeuGcMin", "Minimum dimethylamidated N-glycolyl-neuraminic acid (a2,6) count (default:0)"),
+        new Option<int>("--dNeuGcMax", "Maximum dimethylamidated N-glycolyl-neuraminic acid (a2,6) count (default:0)"),
+        new Option<int>("--amNeuGcMin", "Minimum ammonia amidated N-glycolyl-neuraminic acid (a2,3) count (default:0)"),
+        new Option<int>("--amNeuGcMax", "Maximum ammonia amidated N-glycolyl-neuraminic acid (a2,3) count (default:0)"),
 
         // Custom monosaccharide flags
         new Option<string>(new[] {"--customMono1Name", "-c1Name"}, "First custom monosaccharide name"),
@@ -1217,10 +1217,11 @@ class Program
                 // For each target in the list
                 for (int i = 0; i < targets.Count; i++)
                 {
-                    // Basically, for each percentile from 100, write the percent completion, otherwise we're going to waste a lot of time printing the progress
+                    // Updates the progress, every 20% of targets
                     int currentPercentage = (int)Math.Floor((double)i / targets.Count * 100);
-                    // Only print when the percentage changes
-                    if (currentPercentage != (int)Math.Floor((double)(i - 1) / targets.Count * 100) && currentPercentage < 100)
+                    int currentStep = currentPercentage / 20;
+                    int previousStep = (int)Math.Floor((double)(i - 1) / targets.Count * 100 / 20);
+                    if (currentStep != previousStep && currentPercentage < 100)
                     {
                         Console.WriteLine(DateTime.Now + " Progress: " + currentPercentage + "%");
                     }
