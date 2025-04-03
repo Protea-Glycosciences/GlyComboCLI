@@ -354,7 +354,7 @@ class Program
                         Console.WriteLine($"The reduced end is {options.reducedEnd}");
                         break;
 
-                    case "Custom":
+                    case "custom":
                         Console.WriteLine($"The reduced end is {options.reducedEnd}");
                         break;
 
