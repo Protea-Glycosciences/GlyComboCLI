@@ -313,7 +313,7 @@ class Program
         new Option<decimal>(new[] {"--massError", "-E" }, "Mass error value, e.g. \"30\" or \"0.6\""),
         new Option<string>(new[] {"--massErrorType", "-T" }, "Mass error type can either be Da or ppm"),
         new Option<bool>(new[] {"--offByOne", "-O" }, "if set to true, enables off-by-one searching for cases of incorrect monoisotopic precursor determination"),
-        new Option<string>(new[] {"--file", "-F" }, "Path to the input file, either .mzml or .txt (mass list)"), // File upload option
+        new Option<string>(new[] {"--file", "-F" }, "Path to the input file, either .mzml, or .txt/.dat (mass list)"), // File upload option
     };
 
         rootCommand.Description = "A CLI for GlyCombo, allowing rapid assignment of monosaccharide combinations to observed and fragmented precursors in mass spectrometry experiments" + Environment.NewLine + Environment.NewLine + "Example command: GlyComboCLI.exe -F=\".\\example.mzML\" -hMin=1 -hMax=12 -nMin=2 -nMax=8 -sMin=0 -sMax=2 -fMin=0 -fMax=3 -gMin=0 -gMax=2 -D=\"Native\" -R=\"Reduced\" -T=Da -E=\"0.6\"" + Environment.NewLine + Environment.NewLine + "Questions, comments and bug reports:" + Environment.NewLine + "https://github.com/Protea-Glycosciences/GlyComboCLI" + Environment.NewLine + "chris@proteaglyco.com" + Environment.NewLine + "GlyComboCLI release: v0.0";
@@ -829,7 +829,7 @@ class Program
 
                     // Process for multiple targets conditionally based on text box or mzml input
                     string fileExtension = Path.GetExtension(options.file);
-                    if (fileExtension.ToLower() == ".txt")
+                    if (fileExtension.ToLower() == ".txt" || fileExtension.ToLower() == ".dat")
                     {
                         targetString = ReadMassFileWithSeparator(options.file, Environment.NewLine);
                     }
@@ -965,7 +965,7 @@ class Program
                             }
                         }
                         // Text input is singly charged m/z values that are observed via experiments like MALDI-MS of permethylated glycans so no modification of mass is needed.
-                        if (fileExtension == ".txt")
+                        if (fileExtension == ".txt" || fileExtension.ToLower() == ".dat")
                         {
                             // Subtracting H- from all targets and saving that as a new list
                             if (options.adducts.Split(',').Select(a => a.Trim()).Contains("MH-"))
