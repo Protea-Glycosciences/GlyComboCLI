@@ -190,6 +190,7 @@ class Program
         decimal TIC = 0;
         string[] TICLine;
         string currentMonosaccharideSelection = "";
+        bool mzmlFile = false;
 
 
         List<decimal> numbers = new List<decimal>();
@@ -571,12 +572,12 @@ class Program
                     }
                     string fileNameOutput = options.file.Substring(options.file.LastIndexOf('\\') + 1);
                 }
-                if (scans.Count == 0 && Path.GetExtension(options.file) == ".mzml")
+                if (scans.Count == 0 && mzmlFile == true)
                 {
                     Console.WriteLine("No MS2 found in the given mzML file. Please confirm the selected file has MS2 scans, or select a different file.");
                     return;
                 }
-                else
+                else if (scans.Count > 0 && mzmlFile == true)
                 {
                     // Provide number of scans for each filename
                     Console.WriteLine("File " + options.file + " has completed uploading with a total number of " + scans.Count + " MS2 scans identified.");
@@ -829,13 +830,30 @@ class Program
 
                     // Process for multiple targets conditionally based on text box or mzml input
                     string fileExtension = Path.GetExtension(options.file);
-                    if (fileExtension.ToLower() == ".txt" || fileExtension.ToLower() == ".dat")
+                    if (fileExtension.ToLower() == ".txt")
                     {
+                        Console.WriteLine("Processing text file input.");
                         targetString = ReadMassFileWithSeparator(options.file, Environment.NewLine);
                     }
                     else if (fileExtension.ToLower() == ".mzml")
                     {
+                        mzmlFile = true;
                         targetString = neutralPrecursorListmzml;
+                    }
+                    // Functionality for Galaxy .dat files
+                    else if (fileExtension.ToLower() == ".dat")
+                    {
+                        Console.WriteLine("Processing dat file input.");
+                        string firstline = File.ReadLines(options.file).First();
+                        if (firstline.Contains("xml"))
+                        {
+                            mzmlFile = true;
+                            targetString = neutralPrecursorListmzml;
+                        }
+                        else
+                        {
+                            targetString = ReadMassFileWithSeparator(options.file, Environment.NewLine);
+                        }
                     }
                     else
                     {
