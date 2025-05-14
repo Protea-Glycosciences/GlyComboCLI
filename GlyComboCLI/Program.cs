@@ -121,6 +121,9 @@ public class CommandOptions
     public string? file { get; set; }
     public string? adducts { get; set; }
     public bool? offByOne { get; set; }
+    public string? galaxyPath1 { get; set; }
+    public string? galaxyPath2 { get; set; }
+    public string? galaxyPath3 { get; set; }
 
 }
 class Program
@@ -191,6 +194,9 @@ class Program
         string[] TICLine;
         string currentMonosaccharideSelection = "";
         bool mzmlFile = false;
+        string filePath = "";
+        string filePath1 = "";
+        string filePath2 = "";
 
 
         List<decimal> numbers = new List<decimal>();
@@ -315,11 +321,15 @@ class Program
         new Option<string>(new[] {"--massErrorType", "-T" }, "Mass error type can either be Da or ppm"),
         new Option<bool>(new[] {"--offByOne", "-O" }, "if set to true, enables off-by-one searching for cases of incorrect monoisotopic precursor determination"),
         new Option<string>(new[] {"--file", "-F" }, "Path to the input file, either .mzml, or .txt/.dat (mass list)"), // File upload option
+        new Option<string>(new[] {"--galaxyPath1"}, "Path for the output files for Galaxy"),
+        new Option<string>(new[] {"--galaxyPath2"}, "Path for the output files for Galaxy"),
+    
     };
 
         rootCommand.Description = "A CLI for GlyCombo, allowing rapid assignment of monosaccharide combinations to observed and fragmented precursors in mass spectrometry experiments" + Environment.NewLine + Environment.NewLine + "Example command: GlyComboCLI.exe -F=\".\\example.mzML\" -hMin=1 -hMax=12 -nMin=2 -nMax=8 -sMin=0 -sMax=2 -fMin=0 -fMax=3 -gMin=0 -gMax=2 -D=\"Native\" -R=\"Reduced\" -T=Da -E=\"0.6\"" + Environment.NewLine + Environment.NewLine + "Questions, comments and bug reports:" + Environment.NewLine + "https://github.com/Protea-Glycosciences/GlyComboCLI" + Environment.NewLine + "chris@proteaglyco.com" + Environment.NewLine + "GlyComboCLI release: v0.0";
         rootCommand.Handler = CommandHandler.Create<CommandOptions>(options =>
         {
+            
             if (options.derivatisation != null)
             {
                 // Derivatisation
@@ -861,6 +871,28 @@ class Program
                         return;
                     }
 
+                    if (options.galaxyPath1 != null && options.galaxyPath2 != null)
+                    {
+                        filePath1 = options.galaxyPath1;
+                        filePath2 = options.galaxyPath2;
+                    }
+                    else
+                    {
+                        filePath = Path.Combine(
+                            Path.GetDirectoryName(options.file),
+                            Path.GetFileNameWithoutExtension(options.file));
+                        if (mzmlFile == false){
+                        filePath1 = Path.Combine(
+                            filePath + "_result" + ".csv");
+                        } 
+                        else {
+                        filePath1 = Path.Combine(
+                            filePath + "_SkylineImport.csv");
+                        }
+                        filePath2 = Path.Combine(
+                            filePath + "_parameters.txt");             
+                    }
+
                     // Turn that input into a list of masses
                     targetStrings = new(
                     targetString.Split(new string[] { "\n" },
@@ -880,7 +912,7 @@ class Program
                     {
                         // mzML input has been processed as de / protonated to generate a neutral mass list, so adducts offset is +/- 1 Da for the respective negative/positive adducts
                         // We also don't bother with doing M, M+H, and M-H because they are all the same after mzML processing (M+H and M-H become M)
-                        if (fileExtension == ".mzML")
+                        if (mzmlFile == true)
                         {
 
                             // This all needs to be revised to find if the options.adducts CONTAINS the adduct text, rather than ==. This is because people can submit more than one adduct.
@@ -1265,31 +1297,22 @@ class Program
                 string skylineSolutionMultiplesPreTrim = "";
                 string skylineSolutionMultiples = "";
                 string fileExtension = Path.GetExtension(options.file);
-                string outputFilePath = Path.Combine(
-                    Path.GetDirectoryName(options.file),
-                    Path.GetFileNameWithoutExtension(options.file) + "_result" + ".csv"
-                );
-
-                if (fileExtension == ".mzML")
+                if (mzmlFile == true)
                 {
                     solutionHeader = "Composition,Observed mass,Theoretical mass,Molecular Formula,Mass error,Scan number,Precursor Charge,Retention Time,TIC,File Name";
                     skylineSolutionHeader = "Molecule List Name,Molecule Name,Observed mass,Theoretical mass,Molecular Formula,Mass error,Scan number,Precursor Charge,Retention Time,TIC,Molecule Note";
                     // Process the SolutionMultiples string in a way that generates an output compatible with Skyline with no user intervention
                     skylineSolutionMultiplesPreTrim = (solutionMultiples.Insert(0, Environment.NewLine)).Replace(Environment.NewLine, Environment.NewLine + "GlyCombo,");
                     skylineSolutionMultiples = skylineSolutionMultiplesPreTrim.Substring(0, skylineSolutionMultiplesPreTrim.Length - 10);
-                    File.WriteAllText(Path.Combine(
-                        Path.GetDirectoryName(outputFilePath),
-                        Path.GetFileNameWithoutExtension(outputFilePath) + "_SkylineImport.csv"),
-                        skylineSolutionHeader + skylineSolutionMultiples
-                    );
+                    File.WriteAllText(filePath1, skylineSolutionHeader + skylineSolutionMultiples);
                 }
                 else
                 {
                     solutionHeader = "Composition,Observed mass,Theoretical mass,ChemicalFormula,Mass error";
-                    File.WriteAllText(outputFilePath, solutionHeader + Environment.NewLine + solutionMultiples);
+                    File.WriteAllText(filePath1, solutionHeader + Environment.NewLine + solutionMultiples);
                 }
 
-                Console.WriteLine("File processing complete. Output written to: " + outputFilePath);
+                Console.WriteLine("File processing complete. Output written to: " + filePath1);
 
                 // Converting precursor list to series of strings for subsequent confirmation
                 string combinedTargets = string.Join(Environment.NewLine, targets.ToArray());
@@ -1340,9 +1363,7 @@ class Program
                 submitOutput += "## Adducts: Adduct1, Adduct2" + Environment.NewLine;
                 submitOutput += options.adducts + Environment.NewLine;
                 File.WriteAllText(
-                    Path.Combine(
-                        Path.GetDirectoryName(outputFilePath),
-                        Path.GetFileNameWithoutExtension(outputFilePath) + "_parameters.txt"),
+                    filePath2,
                     submitOutput
                     + Environment.NewLine
                     + "<Precursor targets>"
@@ -2047,7 +2068,7 @@ class Program
                     // Calculation of scan number and charge state to be represented later
                     targetIndex.Add(i);
                     string fileExtension = Path.GetExtension(options.file);
-                    if (fileExtension.ToLower() == ".mzml")
+                    if (mzmlFile == true)
                     {
                         string scanNumberForOutput = "";
                         string chargeForOutput = "";
