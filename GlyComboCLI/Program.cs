@@ -166,7 +166,7 @@ class Program
         decimal acetyl = 0;
         decimal lneugc = 0;
         decimal eeneugc = 0;
-        decimal dneugc = 9;
+        decimal dneugc = 0;
         decimal amneugc = 0;
         decimal sulf = 0;
 
@@ -2175,32 +2175,32 @@ class Program
                         outOfBounds += 1;
                     }
 
-                    if (customMono1Count < options.customMono1Min
-                        || customMono1Count > options.customMono1Max
+                    if ((customMono1Count < options.customMono1Min
+                        || customMono1Count > options.customMono1Max)
                         && monoCustom1 == true)
                     {
                         outOfBounds += 1;
                     }
-                    if (customMono2Count < options.customMono2Min
-                        || customMono2Count > options.customMono2Max
+                    if ((customMono2Count < options.customMono2Min
+                        || customMono2Count > options.customMono2Max)
                         && monoCustom2 == true)
                     {
                         outOfBounds += 1;
                     }
-                    if (customMono3Count < options.customMono3Min
-                        || customMono3Count > options.customMono3Max
+                    if ((customMono3Count < options.customMono3Min
+                        || customMono3Count > options.customMono3Max)
                         && monoCustom3 == true)
                     {
                         outOfBounds += 1;
                     }
-                    if (customMono4Count < options.customMono4Min
-                        || customMono4Count > options.customMono4Max
+                    if ((customMono4Count < options.customMono4Min
+                        || customMono4Count > options.customMono4Max)
                         && monoCustom4 == true)
                     {
                         outOfBounds += 1;
                     }
-                    if (customMono5Count < options.customMono5Min
-                        || customMono5Count > options.customMono5Max
+                    if ((customMono5Count < options.customMono5Min
+                        || customMono5Count > options.customMono5Max)
                         && monoCustom5 == true)
                     {
                         outOfBounds += 1;
