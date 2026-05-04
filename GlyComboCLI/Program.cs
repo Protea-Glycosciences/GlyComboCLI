@@ -1868,7 +1868,7 @@ class Program
                             if (KDNCount > 0)
                             {
                                 chemicalFormulaeC += (KDNCount * 15);
-                                chemicalFormulaeH += (KDNCount * 28);
+                                chemicalFormulaeH += (KDNCount * 20);
                                 chemicalFormulaeO += (KDNCount * 11);
                                 solutionsUpdate = solutionsUpdate + "(KDN)" + Convert.ToString(KDNCount) + " ";
                             }
