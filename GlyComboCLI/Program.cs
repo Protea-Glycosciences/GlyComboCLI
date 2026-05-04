@@ -127,6 +127,38 @@ public class CommandOptions
 }
 class Program
 {
+    static void PrintBanner()
+    {
+        Console.WriteLine();
+        Console.WriteLine("╔══════════════════════════════════════════════════════════════╗");
+        Console.WriteLine("║                     GlyComboCLI  v1.0                        ║");
+        Console.WriteLine("║       Monosaccharide Combinatorial Assignment for MS         ║");
+        Console.WriteLine("╠══════════════════════════════════════════════════════════════╣");
+        Console.WriteLine("║  Rapidly assigns monosaccharide combinations to observed     ║");
+        Console.WriteLine("║  and fragmented precursors in mass spectrometry experiments. ║");
+        Console.WriteLine("╠══════════════════════════════════════════════════════════════╣");
+        Console.WriteLine("║  Supported input formats:  .mzML  |  .txt                    ║");
+        Console.WriteLine("║  Supported derivatisations: Native | Permethylated |         ║");
+        Console.WriteLine("║    Peracetylated                                             ║");
+        Console.WriteLine("║  Supported reducing ends:   Free | Reduced | InstantPC |     ║");
+        Console.WriteLine("║    Rapifluor-MS | 2AA | 2AB | Procainamide | Girard |        ║");
+        Console.WriteLine("║    Custom                                                    ║");
+        Console.WriteLine("║  Supported adducts (+):     MH+ | MNa+ | MNH4+ | MK+         ║");
+        Console.WriteLine("║  Supported adducts (-):     MH- | MFA- | MAA- | MTFA-        ║");
+        Console.WriteLine("║  Other adducts:             Neutral | Custom                 ║");
+        Console.WriteLine("╠══════════════════════════════════════════════════════════════╣");
+        Console.WriteLine("║  Example:                                                    ║");
+        Console.WriteLine("║  GlyComboCLI.exe -F=\".\\example.mzML\" -hMin=1 -hMax=12        ║");
+        Console.WriteLine("║    -nMin=2 -nMax=8 -sMin=0 -sMax=2 -fMin=0 -fMax=3           ║");
+        Console.WriteLine("║    -gMin=0 -gMax=2 -D=\"Native\" -R=\"Reduced\" -T=Da -E=0.6     ║");
+        Console.WriteLine("╠══════════════════════════════════════════════════════════════╣");
+        Console.WriteLine("║  Questions, comments and bug reports:                        ║");
+        Console.WriteLine("║    https://github.com/Protea-Glycosciences/GlyComboCLI       ║");
+        Console.WriteLine("║    chris@proteaglyco.com                                     ║");
+        Console.WriteLine("╚══════════════════════════════════════════════════════════════╝");
+        Console.WriteLine();
+    }
+
     static void Main(string[] args)
     {
         decimal errorTol;
@@ -322,10 +354,15 @@ class Program
         new Option<string>(new[] {"--outputPath"}, "Path for the output files (optional)"),
     
     };
-
+        PrintBanner();
         rootCommand.Description = "A CLI for GlyCombo, allowing rapid assignment of monosaccharide combinations to observed and fragmented precursors in mass spectrometry experiments" + Environment.NewLine + Environment.NewLine + "Example command: GlyComboCLI.exe -F=\".\\example.mzML\" -hMin=1 -hMax=12 -nMin=2 -nMax=8 -sMin=0 -sMax=2 -fMin=0 -fMax=3 -gMin=0 -gMax=2 -D=\"Native\" -R=\"Reduced\" -T=Da -E=\"0.6\"" + Environment.NewLine + Environment.NewLine + "Questions, comments and bug reports:" + Environment.NewLine + "https://github.com/Protea-Glycosciences/GlyComboCLI" + Environment.NewLine + "chris@proteaglyco.com" + Environment.NewLine + "GlyComboCLI release: v0.0";
         rootCommand.Handler = CommandHandler.Create<CommandOptions>(options =>
         {
+            if (string.IsNullOrWhiteSpace(options.file) || !File.Exists(options.file))
+            {
+                Console.WriteLine("No valid file path provided or file does not exist. Search terminated.");
+                return;
+            }
 
             if (options.derivatisation != null)
             {
