@@ -1,14 +1,15 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
-using System.IO;
 using System.CommandLine.NamingConventionBinder;
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Security.AccessControl;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Runtime.InteropServices;
-using System.Security.AccessControl;
-using System.Collections.Generic;
 
 
 public class CommandOptions
@@ -122,6 +123,7 @@ public class CommandOptions
     public string? file { get; set; }
     public string? adducts { get; set; }
     public bool? offByOne { get; set; }
+    public bool noGlyTouCan { get; set; }
     public string? outputPath { get; set; }
 
 }
@@ -350,6 +352,7 @@ class Program
         new Option<decimal>(new[] {"--massError", "-E" }, "Mass error value, e.g. \"30\" or \"0.6\""),
         new Option<string>(new[] {"--massErrorType", "-T" }, "Mass error type can either be Da or ppm"),
         new Option<bool>(new[] {"--offByOne", "-O" }, "if set to true, enables off-by-one searching for cases of incorrect monoisotopic precursor determination"),
+        new Option<bool>(new[] {"--noGlyTouCan", "-N" }, "Disable GlyTouCan base-composition accession annotation in output files"),
         new Option<string>(new[] {"--file", "-F" }, "Path to the input file, either .mzml, or .txt/.dat (mass list)"), // File upload option
         new Option<string>(new[] {"--outputPath"}, "Path for the output files (optional)"),
     
@@ -358,6 +361,7 @@ class Program
         rootCommand.Description = "A CLI for GlyCombo, allowing rapid assignment of monosaccharide combinations to observed and fragmented precursors in mass spectrometry experiments" + Environment.NewLine + Environment.NewLine + "Example command: GlyComboCLI.exe -F=\".\\example.mzML\" -hMin=1 -hMax=12 -nMin=2 -nMax=8 -sMin=0 -sMax=2 -fMin=0 -fMax=3 -gMin=0 -gMax=2 -D=\"Native\" -R=\"Reduced\" -T=Da -E=\"0.6\"" + Environment.NewLine + Environment.NewLine + "Questions, comments and bug reports:" + Environment.NewLine + "https://github.com/Protea-Glycosciences/GlyComboCLI" + Environment.NewLine + "chris@proteaglyco.com" + Environment.NewLine + "GlyComboCLI release: v0.0";
         rootCommand.Handler = CommandHandler.Create<CommandOptions>(options =>
         {
+            Stopwatch stopwatch = Stopwatch.StartNew();
             if (string.IsNullOrWhiteSpace(options.file) || !File.Exists(options.file))
             {
                 Console.WriteLine("No valid file path provided or file does not exist. Search terminated.");
@@ -1310,10 +1314,11 @@ class Program
                 string skylineSolutionMultiplesPreTrim = "";
                 string skylineSolutionMultiples = "";
                 string fileExtension = Path.GetExtension(options.file);
+                string glyTouCanHeader = options.noGlyTouCan ? "" : ",GlyTouCan Base Composition";
                 if (mzmlFile == true)
                 {
-                    solutionHeader = "Composition,Observed mass,Theoretical mass,Molecular Formula,Mass error,Scan number,Precursor Charge,Retention Time,TIC,File Name";
-                    skylineSolutionHeader = "Molecule List Name,Molecule Name,Observed mass,Theoretical mass,Molecular Formula,Mass error,Scan number,Precursor Charge,Retention Time,TIC,Molecule Note";
+                    solutionHeader = "Composition,Observed mass,Theoretical mass,Molecular Formula,Mass error,Scan number,Precursor Charge,Retention Time,TIC,File Name" + glyTouCanHeader;
+                    skylineSolutionHeader = "Molecule List Name,Molecule Name,Observed mass,Theoretical mass,Molecular Formula,Mass error,Scan number,Precursor Charge,Retention Time,TIC,Molecule Note" + glyTouCanHeader;
                     // Process the SolutionMultiples string in a way that generates an output compatible with Skyline with no user intervention
                     skylineSolutionMultiplesPreTrim = (solutionMultiples.Insert(0, Environment.NewLine)).Replace(Environment.NewLine, Environment.NewLine + "GlyCombo,");
                     skylineSolutionMultiples = skylineSolutionMultiplesPreTrim.Substring(0, skylineSolutionMultiplesPreTrim.Length - 10);
@@ -1321,7 +1326,7 @@ class Program
                 }
                 else
                 {
-                    solutionHeader = "Composition,Observed mass,Theoretical mass,ChemicalFormula,Mass error";
+                    solutionHeader = "Composition,Observed mass,Theoretical mass,ChemicalFormula,Mass error" + glyTouCanHeader;
                     File.WriteAllText(filePath1, solutionHeader + Environment.NewLine + solutionMultiples);
                 }
 
@@ -1343,6 +1348,7 @@ class Program
                 {
                     submitOutput += "<OffByOne enabled> " + Environment.NewLine;
                 }
+                submitOutput += "<GlyTouCan base-composition annotation> " + (options.noGlyTouCan ? "Disabled" : "Enabled") + Environment.NewLine;
                 submitOutput += "## Monosaccharides: Monosaccharide1(Min-Max), Monosaccharide2(Min-Max)" + Environment.NewLine;
                 submitOutput += currentMonosaccharideSelection + Environment.NewLine;
                 if (options.customMono1Max > 0 || options.customMono2Max > 0 || options.customMono3Max > 0 || options.customMono4Max > 0 || options.customMono5Max > 0)
@@ -1417,6 +1423,12 @@ class Program
                 );
                 Console.WriteLine(submitOutput);
 
+                stopwatch.Stop();
+
+                Console.WriteLine(
+                    "Total execution time: " +
+                    stopwatch.Elapsed.ToString(@"hh\:mm\:ss\.fff")
+                );
             }
 
             void Sum_up_recursive(List<decimal> numbers, decimal target, List<decimal> partial, bool targetFound, int i, CommandOptions options)
@@ -2126,6 +2138,51 @@ class Program
                     // Calculation for mass error
                     error = observedMass - theoreticalMass;
 
+                    // GlyTouCan base-composition annotation.
+                    // Reject compositions that cannot be mapped exactly before querying the lookup.
+                    string glyTouCanBaseComposition = "";
+                    if (!options.noGlyTouCan)
+                    {
+                        bool hasUnmappedComposition =
+                            hexNhexNAcCount > 0 ||
+                            lNeuAcCount > 0 ||
+                            eeNeuAcCount > 0 ||
+                            dNeuAcCount > 0 ||
+                            amNeuAcCount > 0 ||
+                            lNeuGcCount > 0 ||
+                            eeNeuGcCount > 0 ||
+                            dNeuGcCount > 0 ||
+                            amNeuGcCount > 0 ||
+                            (monoCustom1 && customMono1Count > 0) ||
+                            (monoCustom2 && customMono2Count > 0) ||
+                            (monoCustom3 && customMono3Count > 0) ||
+                            (monoCustom4 && customMono4Count > 0) ||
+                            (monoCustom5 && customMono5Count > 0);
+
+                        if (!hasUnmappedComposition)
+                        {
+                            glyTouCanBaseComposition = GlyTouCanBaseCompositionLookup.FindAccession(
+                                hexCount,
+                                hexNAcCount,
+                                dHexCount,
+                                HexACount,
+                                HexNCount,
+                                PentCount,
+                                KDNCount,
+                                neuAcCount,
+                                neuGcCount,
+                                dhexnacCount,
+                                phosCount,
+                                sulfCount,
+                                acetylCount
+                            );
+                        }
+                    }
+
+                    string glyTouCanOutput = options.noGlyTouCan
+                        ? ""
+                        : System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + glyTouCanBaseComposition;
+
                     // Calculation of scan number and charge state to be represented later
                     targetIndex.Add(i);
                     string fileExtension = Path.GetExtension(options.file);
@@ -2150,12 +2207,12 @@ class Program
                         }
 
                         // Adding of each string component to output
-                        solutionProcess += solutionsUpdate + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + theoreticalMass + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + observedMass + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + chemicalFormula + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + error + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + scanNumberForOutput + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + chargeForOutput + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + retentionTimeForOutput + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + TICForOutput + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + FileForOutput + Environment.NewLine;
+                        solutionProcess += solutionsUpdate + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + theoreticalMass + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + observedMass + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + chemicalFormula + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + error + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + scanNumberForOutput + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + chargeForOutput + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + retentionTimeForOutput + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + TICForOutput + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + FileForOutput + glyTouCanOutput + Environment.NewLine;
                     }
                     else
                     {
                         // just text input, so no charge state, scan number, RT, or TIC info
-                        solutionProcess += solutionsUpdate + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + theoreticalMass + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + observedMass + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + chemicalFormula + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + error + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + Environment.NewLine;
+                        solutionProcess += solutionsUpdate + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + theoreticalMass + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + observedMass + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + chemicalFormula + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + error + glyTouCanOutput + Environment.NewLine;
                     }
 
 
@@ -2307,7 +2364,6 @@ class Program
                     Sum_up_recursive(remaining, target, partial_rec, targetFound, i, options);
                 }
             }
-            Console.WriteLine($"[DEBUG] options.file = '{options.file}'");
             if (!string.IsNullOrWhiteSpace(options.file) && File.Exists(options.file))
             {
                 using var reader = new StreamReader(options.file);
