@@ -131,7 +131,7 @@ class Program
     {
         Console.WriteLine();
         Console.WriteLine("╔══════════════════════════════════════════════════════════════╗");
-        Console.WriteLine("║                     GlyComboCLI  v1.0                        ║");
+        Console.WriteLine("║                     GlyComboCLI  v0.1.0                      ║");
         Console.WriteLine("║       Monosaccharide Combinatorial Assignment for MS         ║");
         Console.WriteLine("╠══════════════════════════════════════════════════════════════╣");
         Console.WriteLine("║  Rapidly assigns monosaccharide combinations to observed     ║");
