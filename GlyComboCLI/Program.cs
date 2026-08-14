@@ -131,7 +131,7 @@ class Program
     {
         Console.WriteLine();
         Console.WriteLine("╔══════════════════════════════════════════════════════════════╗");
-        Console.WriteLine("║                     GlyComboCLI  v0.1.0                      ║");
+        Console.WriteLine("║                     GlyComboCLI  v1.1                        ║");
         Console.WriteLine("║       Monosaccharide Combinatorial Assignment for MS         ║");
         Console.WriteLine("╠══════════════════════════════════════════════════════════════╣");
         Console.WriteLine("║  Rapidly assigns monosaccharide combinations to observed     ║");
@@ -1027,7 +1027,6 @@ class Program
                             }
                         }
                         // Text input is singly charged m/z values that are observed via experiments like MALDI-MS of permethylated glycans so no modification of mass is needed.
-                        // TODO: Should this also include .dat?
                         if (fileExtension == ".txt" || fileExtension.ToLower() == ".dat")
                         {
                             // Subtracting H- from all targets and saving that as a new list
@@ -1267,7 +1266,7 @@ class Program
                 Sum_up(numbers, targets, options);
                 solutions = "";
                 // Pop-up to let the user know the search has finished
-                Console.WriteLine("GlyCombo has finished running." + Environment.NewLine + ((solutionMultiples.Length - solutionMultiples.Replace(Environment.NewLine, string.Empty).Length) / 2) + " monosaccharide combinations identified over " + iterations + " iterations." + Environment.NewLine);
+                Console.WriteLine("GlyComboCLI has finished running." + Environment.NewLine + ((solutionMultiples.Length - solutionMultiples.Replace(Environment.NewLine, string.Empty).Length) / 2) + " monosaccharide combinations identified over " + iterations + " iterations." + Environment.NewLine);
                 solutionProcess = "";
             }
 
@@ -1330,7 +1329,8 @@ class Program
 
                 // Converting precursor list to series of strings for subsequent confirmation
                 string combinedTargets = string.Join(Environment.NewLine, targets.ToArray());
-                string submitOutput = Environment.NewLine + "GlyCombo search output" + Environment.NewLine;
+                string submitOutput = "GlyComboCLI (v1.1) search output" + Environment.NewLine;
+                submitOutput += "<Input file> " + Path.GetFileName(options.file) + Environment.NewLine;
                 submitOutput += "<Error tolerance> " + options.massError + "," + options.massErrorType + Environment.NewLine;
                 submitOutput += "<Reducing end> " + options.reducedEnd + Environment.NewLine;
                 if (options.reducedEnd.ToString() == "Custom")
@@ -1375,7 +1375,38 @@ class Program
 
                 }
                 submitOutput += "## Adducts: Adduct1, Adduct2" + Environment.NewLine;
-                submitOutput += options.adducts + Environment.NewLine;
+                if (!string.IsNullOrWhiteSpace(options.adducts))
+                {
+                    // User-defined adducts
+                    submitOutput += options.adducts + Environment.NewLine;
+                }
+                else if (mzmlFile)
+                {
+                    // No user-defined adducts: protonation/deprotonation was inferred directly from the polarity and charge state in the mzML file.
+                    bool positiveMode = charges.Any(c => c > 0);
+                    bool negativeMode = charges.Any(c => c < 0);
+
+                    if (positiveMode && negativeMode)
+                    {
+                        submitOutput += "M+xH, M-xH (inferred from mzML polarity)" + Environment.NewLine;
+                    }
+                    else if (positiveMode)
+                    {
+                        submitOutput += "M+xH (inferred from mzML positive polarity)" + Environment.NewLine;
+                    }
+                    else if (negativeMode)
+                    {
+                        submitOutput += "M-xH (inferred from mzML negative polarity)" + Environment.NewLine;
+                    }
+                    else
+                    {
+                        submitOutput += "None" + Environment.NewLine;
+                    }
+                }
+                else
+                {
+                    submitOutput += "None" + Environment.NewLine;
+                }          
                 File.WriteAllText(
                     filePath2,
                     submitOutput
