@@ -935,7 +935,11 @@ class Program
                     targetStrings = new(
                     targetString.Split(new string[] { "\n" },
                     StringSplitOptions.RemoveEmptyEntries));
-                    targets = targetStrings.ConvertAll(decimal.Parse);
+                    targets = targetStrings
+                    .Select(s => s.Trim())
+                    .Where(s => !string.IsNullOrEmpty(s))
+                    .Select(decimal.Parse)
+                    .ToList();
 
                     // Adduct calculation
                     // This can result in huge combinatorial searches but it's there for the user as an option
@@ -2272,7 +2276,7 @@ class Program
                     Sum_up_recursive(remaining, target, partial_rec, targetFound, i, options);
                 }
             }
-
+            Console.WriteLine($"[DEBUG] options.file = '{options.file}'");
             if (!string.IsNullOrWhiteSpace(options.file) && File.Exists(options.file))
             {
                 using var reader = new StreamReader(options.file);
