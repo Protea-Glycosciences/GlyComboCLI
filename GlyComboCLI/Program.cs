@@ -1,3 +1,4 @@
+using GlyCombo;
 using System;
 using System.Collections.Generic;
 using System.CommandLine;
@@ -650,226 +651,15 @@ class Program
                 try
                 {
                     solutionMultiples = "";
-                    // Define the components in the combinatorial analysis: native, permethylated, peracetylated
-                    if (options.derivatisation == "native")
-                    {
-                        // Native
-                        dhex = 146.057908m; // permethylated mass = 174.089210 chemical formula = C8H14O4
-                        hex = 162.052823m; // permethylated mass = 204.099775 chemical formula = C9H16O5
-                        hexnac = 203.079372m; // permethylated mass = 245.126324 chemical formula = C11H19NO5
-                        hexn = 161.068808m; // permethylated mass = 217.131409 chemical formula = C10H19NO4
-                        hexa = 176.032088m; // permethylated mass = 218.079040 chemical formula = C9H14O6
-                        dhexnac = 187.084458m; // permethylated mass = 215.115759 chemical formula = C10H17N1O4
-                        pent = 132.042258m; // permethylated mass = 160.073560 chemical formula = C7H12O4
-                        kdn = 250.068867m; // permethylated mass = 320.147120 chemical formula = C14H24O8
-                        neuac = 291.095416m; // permethylated mass = 361.173669 chemical formula = C16H27NO8
-                        neugc = 307.090331m; // permethylated mass = 391.184234 chemical formula = C17H29NO9
-                        phos = 79.966331m; // permethylated mass = 93.981983 chemical formula = CH3O3P
-                        lneuac = 273.0848518m;
-                        eeneuac = 319.1267166m;
-                        dneuac = 318.1427011m;
-                        amneuac = 290.1114009m;
-                        acetyl = 42.010565m;
-                        lneugc = 289.0797664m;
-                        eeneugc = 335.1216313m;
-                        dneugc = 306.1063155m;
-                        amneugc = 334.1376157m;
-                        sulf = 79.956815m; // SO3
-                    }
-                    if (options.derivatisation == "permethylated")
-                    {
-                        // Permethylated
-                        dhex = 174.089210m; // chemical formula = C8H14O4
-                        hex = 204.099775m; //  chemical formula = C9H16O5
-                        hexnac = 245.126324m; //  chemical formula = C11H19NO5
-                        hexn = 203.115758m; //  chemical formula = C9H17NO4
-                        hexa = 218.079040m; //  chemical formula = C9H14O6
-                        dhexnac = 215.115758m; //  chemical formula = C10H17N1O4
-                        pent = 160.073560m; //  chemical formula = C7H12O4
-                        kdn = 320.147120m; // chemical formula = C14H24O8
-                        neuac = 361.173669m; // chemical formula = C16H27NO8
-                        neugc = 391.184234m; // chemical formula = C17H29NO9
-                        phos = 93.981980m; // chemical formula = PO3H3C1
-                        sulf = 65.941165m; // chemical formula = SO3C-1H-2
-                    }
-                    if (options.derivatisation == "peracetylated")
-                    {
-                        // Peracetylated
-                        dhex = 230.079038m; // chemical formula = C10H14O6
-                        hex = 288.084517m; // chemical formula = C12H16O8
-                        hexnac = 287.100501m; // chemical formula = C12H17NO7
-                        hexn = 287.100501m; // chemical formula = C12H17NO7
-                        hexa = 260.053217m; // chemical formula = C10H12O8
-                        dhexnac = 247.105587m; // chemical formula = C10H17NO6
-                        pent = 216.063388m; // chemical formula = C9H12O6
-                        kdn = 376.100561m; // chemical formula = C15H20O11
-                        neuac = 417.127110m; // chemical formula = C17H23NO11
-                        neugc = 475.132593m; // chemical formula = C19H25NO13
-                        phos = 37.955765m; // chemical formula = PO2C-2H-1
-                        sulf = 37.946250m; // chemical formula = SO2C-2H-2
-                    }
+                    var catalog = MonosaccharideCatalog.BuildActive(options);
+                    numbers = catalog.Select(d => d.Mass).ToList();
+                    currentMonosaccharideSelection = MonosaccharideCatalog.FormatParameterReport(catalog);
 
-                    // Add the components to combinatorial analysis based on which monosaccharides the user chooses to include
-                    if (options.HexMax > 0)
-                    {
-                        currentMonosaccharideSelection += "Hex(" + options.HexMin + "-" + options.HexMax + "), ";
-                        numbers.Add(hex);
-                    }
-
-                    if (options.HexAMax > 0)
-                    {
-                        currentMonosaccharideSelection += "HexA(" + options.HexAMin + "-" + options.HexAMax + "), ";
-                        numbers.Add(hexa);
-                    }
-
-                    if (options.dHexMax > 0)
-                    {
-                        currentMonosaccharideSelection += "dHex(" + options.dHexMin + "-" + options.dHexMax + "), ";
-                        numbers.Add(dhex);
-                    }
-
-                    if (options.HexNAcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "HexNAc(" + options.HexNAcMin + "-" + options.HexNAcMax + "), ";
-                        numbers.Add(hexnac);
-                    }
-
-                    if (options.HexNMax > 0)
-                    {
-                        currentMonosaccharideSelection += "HexN(" + options.HexNMin + "-" + options.HexNMax + "), ";
-                        numbers.Add(hexn);
-                    }
-
-                    if (options.dHexNAcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "dHexNAc(" + options.dHexNAcMin + "-" + options.dHexNAcMax + "), ";
-                        numbers.Add(dhexnac);
-                    }
-
-                    if (options.PentMax > 0)
-                    {
-                        currentMonosaccharideSelection += "Pent(" + options.PentMin + "-" + options.PentMax + "), ";
-                        numbers.Add(pent);
-                    }
-
-                    if (options.KDNMax > 0)
-                    {
-                        currentMonosaccharideSelection += "KDN(" + options.KDNMin + "-" + options.KDNMax + "), ";
-                        numbers.Add(kdn);
-                    }
-
-                    if (options.Neu5AcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "Neu5Ac(" + options.Neu5AcMin + "-" + options.Neu5AcMax + "), ";
-                        numbers.Add(neuac);
-                    }
-
-                    if (options.Neu5GcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "Neu5Gc(" + options.Neu5GcMin + "-" + options.Neu5GcMax + "), ";
-                        numbers.Add(neugc);
-                    }
-
-                    if (options.PhosMax > 0)
-                    {
-                        currentMonosaccharideSelection += "Phos(" + options.PhosMin + "-" + options.PhosMax + "), ";
-                        numbers.Add(phos);
-                    }
-
-                    if (options.SulfMax > 0)
-                    {
-                        currentMonosaccharideSelection += "Sulf(" + options.SulfMin + "-" + options.SulfMax + "), ";
-                        numbers.Add(sulf);
-                    }
-
-                    if (options.lNeuAcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "lNeuAc(" + options.lNeuAcMin + "-" + options.lNeuAcMax + "), ";
-                        numbers.Add(lneuac);
-                    }
-
-                    if (options.eeNeuAcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "eeNeuAc(" + options.eeNeuAcMin + "-" + options.eeNeuAcMax + "), ";
-                        numbers.Add(eeneuac);
-                    }
-
-                    if (options.dNeuAcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "dNeuAc(" + options.dNeuAcMin + "-" + options.dNeuAcMax + "), ";
-                        numbers.Add(dneuac);
-                    }
-
-                    if (options.amNeuAcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "amNeuAc(" + options.amNeuAcMin + "-" + options.amNeuAcMax + "), ";
-                        numbers.Add(amneuac);
-                    }
-
-                    if (options.acetylMax > 0)
-                    {
-                        currentMonosaccharideSelection += "Acetyl(" + options.acetylMin + "-" + options.acetylMax + "), ";
-                        numbers.Add(acetyl);
-                    }
-
-                    if (options.lNeuGcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "lNeuGc(" + options.lNeuGcMin + "-" + options.lNeuGcMax + "), ";
-                        numbers.Add(lneugc);
-                    }
-
-                    if (options.eeNeuGcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "eeNeuGc(" + options.eeNeuGcMin + "-" + options.eeNeuGcMax + "), ";
-                        numbers.Add(eeneugc);
-                    }
-
-                    if (options.dNeuGcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "dNeuGc(" + options.dNeuGcMin + "-" + options.dNeuGcMax + "), ";
-                        numbers.Add(dneugc);
-                    }
-
-                    if (options.amNeuGcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "amNeuGc(" + options.amNeuGcMin + "-" + options.amNeuGcMax + "), ";
-                        numbers.Add(amneugc);
-                    }
-
-                    if (options.customMono1Max > 0)
-                    {
-                        currentMonosaccharideSelection += options.customMono1Name + "(" + options.customMono1Min + "-" + options.customMono1Max + "), ";
-                        numbers.Add(options.customMono1Mass);
-                        monoCustom1 = true;
-                    }
-
-                    if (options.customMono2Max > 0)
-                    {
-                        currentMonosaccharideSelection += options.customMono2Name + "(" + options.customMono2Min + "-" + options.customMono2Max + "), ";
-                        numbers.Add(options.customMono2Mass);
-                        monoCustom2 = true;
-                    }
-
-                    if (options.customMono3Max > 0)
-                    {
-                        currentMonosaccharideSelection += options.customMono3Name + "(" + options.customMono3Min + "-" + options.customMono3Max + "), ";
-                        numbers.Add(options.customMono3Mass);
-                        monoCustom3 = true;
-                    }
-
-                    if (options.customMono4Max > 0)
-                    {
-                        currentMonosaccharideSelection += options.customMono4Name + "(" + options.customMono4Min + "-" + options.customMono4Max + "), ";
-                        numbers.Add(options.customMono4Mass);
-                        monoCustom4 = true;
-                    }
-
-                    if (options.customMono5Max > 0)
-                    {
-                        currentMonosaccharideSelection += options.customMono5Name + "(" + options.customMono5Min + "-" + options.customMono5Max + "), ";
-                        numbers.Add(options.customMono5Mass);
-                        monoCustom5 = true;
-                    }
+                    bool monoCustom1 = options.customMono1Max > 0;
+                    bool monoCustom2 = options.customMono2Max > 0;
+                    bool monoCustom3 = options.customMono3Max > 0;
+                    bool monoCustom4 = options.customMono4Max > 0;
+                    bool monoCustom5 = options.customMono5Max > 0;
 
 
                     // Process for multiple targets conditionally based on text box or mzml input
@@ -1787,8 +1577,9 @@ class Program
                             HexNCount = Regex.Matches(solutions, "HexN ").Count;
                             if (HexNCount > 0)
                             {
-                                chemicalFormulaeC += (HexNCount * 9);
-                                chemicalFormulaeH += (HexNCount * 17);
+                                // 6 11 4
+                                chemicalFormulaeC += (HexNCount * 10);
+                                chemicalFormulaeH += (HexNCount * 19);
                                 chemicalFormulaeO += (HexNCount * 4);
                                 chemicalFormulaeN += (HexNCount);
                                 solutionsUpdate = solutionsUpdate + "(HexN)" + Convert.ToString(HexNCount) + " ";
@@ -1871,7 +1662,7 @@ class Program
                                 chemicalFormulaeS += (sulfCount);
                                 solutionsUpdate = solutionsUpdate + "(Sulf)" + Convert.ToString(sulfCount) + " ";
                             }
-                            switch (reducedEnd)
+                            switch (options.reducedEnd)
                             {
                                 case "free":
                                     chemicalFormulaeC += 2;
@@ -1893,7 +1684,7 @@ class Program
                                     break;
                             }
                             // Permethylated
-                            switch (reducedEnd)
+                            switch (options.reducedEnd)
                             {
                                 case "free":
                                     observedMass = s + 18.010565m + 28.031300m;
@@ -2034,7 +1825,7 @@ class Program
                                 chemicalFormulaeS += (sulfCount);
                                 solutionsUpdate = solutionsUpdate + "(Sulf)" + Convert.ToString(sulfCount) + " ";
                             }
-                            switch (reducedEnd)
+                            switch (options.reducedEnd)
                             {
                                 case "free":
                                     chemicalFormulaeC += 4;
@@ -2056,7 +1847,7 @@ class Program
                                     break;
                             }
                             // Peracetylated
-                            switch (reducedEnd)
+                            switch (options.reducedEnd)
                             {
                                 case "free":
                                     observedMass = s + 18.010565m + 84.021129m;
