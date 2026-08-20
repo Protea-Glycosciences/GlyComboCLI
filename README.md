@@ -64,3 +64,39 @@ Questions, comments and bug reports:
 ## Licence
 
 See [LICENSE](LICENSE) for details.
+
+---
+
+# Functions
+
+<details>
+<summary>Spectral analysis, Sequence composition calculation</summary>
+
+```yaml
+# biotools-function
+operation:
+- term: Spectral analysis
+  uri: http://edamontology.org/operation_3214
+- term: Sequence composition calculation
+  uri: http://edamontology.org/operation_0236
+input:
+- data:
+    term: Mass spectrum
+    uri: http://edamontology.org/data_0943
+  format:
+  - term: mzML
+    uri: http://edamontology.org/format_3244
+output:
+- data:
+    term: Carbohydrate accession
+    uri: http://edamontology.org/data_2900
+  format:
+  - term: CSV
+    uri: http://edamontology.org/format_3752
+note: Requires MS2 scans with precursor m/z annotated if using the mzml approach
+cmd: GlyComboCLI.exe -F=".\masses.txt" -D=Native -R=Reduced -T=Da -E=0.6 -A=Neutral
+  -hMax=9 -nMin=2 -nMax=10
+
+```
+
+</details>
