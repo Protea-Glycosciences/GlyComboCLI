@@ -21,7 +21,6 @@ internal static class MonosaccharideCatalog
 
         return active;
     }
-
     /// Formats the parameter-report line ("Hex(0-9), HexNAc(0-4), ...") from the active
 
     public static string FormatParameterReport(IEnumerable<MonosaccharideDefinition> active)
@@ -51,8 +50,8 @@ internal static class MonosaccharideCatalog
         yield return new("dHexNAc", "dHexNAc", 187.084458m, 8, 13, 1, 4, 0, 0, o.dHexNAcMin, o.dHexNAcMax);
         yield return new("Pent", "Pent", 132.042258m, 5, 8, 0, 4, 0, 0, o.PentMin, o.PentMax);
         yield return new("KDN", "KDN", 250.068867m, 9, 14, 0, 8, 0, 0, o.KDNMin, o.KDNMax);
-        yield return new("Neu5Ac", "Neu5Ac", 291.095416m, 11, 17, 1, 8, 0, 0, o.Neu5AcMin, o.Neu5AcMax);
-        yield return new("Neu5Gc", "Neu5Gc", 307.090331m, 11, 17, 1, 9, 0, 0, o.Neu5GcMin, o.Neu5GcMax);
+        yield return new("Neu5Ac", "NeuAc", 291.095416m, 11, 17, 1, 8, 0, 0, o.Neu5AcMin, o.Neu5AcMax);
+        yield return new("Neu5Gc", "NeuGc", 307.090331m, 11, 17, 1, 9, 0, 0, o.Neu5GcMin, o.Neu5GcMax);
         yield return new("Phos", "Phos", 79.966331m, 0, 1, 0, 3, 1, 0, o.PhosMin, o.PhosMax);
         yield return new("Sulf", "Sulf", 79.956815m, 0, 0, 0, 3, 0, 1, o.SulfMin, o.SulfMax);
         yield return new("lNeuAc", "lNeuAc", 273.0848518m, 11, 15, 1, 7, 0, 0, o.lNeuAcMin, o.lNeuAcMax);
@@ -76,8 +75,8 @@ internal static class MonosaccharideCatalog
         yield return new("dHexNAc", "dHexNAc", 215.115759m, 10, 17, 1, 4, 0, 0, o.dHexNAcMin, o.dHexNAcMax);
         yield return new("Pent", "Pent", 160.073560m, 7, 12, 0, 4, 0, 0, o.PentMin, o.PentMax);
         yield return new("KDN", "KDN", 320.147120m, 14, 24, 0, 8, 0, 0, o.KDNMin, o.KDNMax);
-        yield return new("Neu5Ac", "Neu5Ac", 361.173669m, 16, 27, 1, 8, 0, 0, o.Neu5AcMin, o.Neu5AcMax);
-        yield return new("Neu5Gc", "Neu5Gc", 391.184234m, 17, 29, 1, 9, 0, 0, o.Neu5GcMin, o.Neu5GcMax);
+        yield return new("Neu5Ac", "NeuAc", 361.173669m, 16, 27, 1, 8, 0, 0, o.Neu5AcMin, o.Neu5AcMax);
+        yield return new("Neu5Gc", "NeuGc", 391.184234m, 17, 29, 1, 9, 0, 0, o.Neu5GcMin, o.Neu5GcMax);
         yield return new("Phos", "Phos", 93.981980m, 1, 3, 0, 3, 1, 0, o.PhosMin, o.PhosMax);
         yield return new("Sulf", "Sulf", 65.941165m, -1, -2, 0, 3, 0, 1, o.SulfMin, o.SulfMax);
     }
@@ -90,16 +89,20 @@ internal static class MonosaccharideCatalog
         yield return new("dHexNAc", "dHexNAc", 247.105587m, 10, 17, 1, 6, 0, 0, o.dHexNAcMin, o.dHexNAcMax);
         yield return new("Pent", "Pent", 216.063388m, 9, 12, 0, 6, 0, 0, o.PentMin, o.PentMax);
         yield return new("KDN", "KDN", 376.100561m, 15, 20, 0, 11, 0, 0, o.KDNMin, o.KDNMax);
-        yield return new("Neu5Ac", "Neu5Ac", 417.127110m, 17, 23, 1, 11, 0, 0, o.Neu5AcMin, o.Neu5AcMax);
-        yield return new("Neu5Gc", "Neu5Gc", 475.132593m, 19, 25, 1, 13, 0, 0, o.Neu5GcMin, o.Neu5GcMax);
+        yield return new("Neu5Ac", "NeuAc", 417.127110m, 17, 23, 1, 11, 0, 0, o.Neu5AcMin, o.Neu5AcMax);
+        yield return new("Neu5Gc", "NeuGc", 475.132593m, 19, 25, 1, 13, 0, 0, o.Neu5GcMin, o.Neu5GcMax);
         yield return new("Phos", "Phos", 37.955765m, -2, -1, 0, 2, 1, 0, o.PhosMin, o.PhosMax);
         yield return new("Sulf", "Sulf", 37.946250m, -2, -2, 0, 2, 0, 1, o.SulfMin, o.SulfMax);
 
         // Peracetylated HexN and HexNAc are exact same mass
         if (o.HexNAcMax > 0 && o.HexNMax > 0)
         {
-            yield return new("HexNAc(degenerate)", "HexNAc/HexN", 287.100501m, 12, 17, 1, 7, 0, 0, o.HexNAcMin, o.HexNAcMax);
-            yield return new("HexN(degenerate)", "HexNAc/HexN", 287.100501m, 12, 17, 1, 7, 0, 0, o.HexNMin, o.HexNMax);
+            yield return new(
+                "HexNAc/HexN",
+                "HexNAc/HexN",
+                287.100501m, 12, 17, 1, 7, 0, 0,
+                o.HexNAcMin + o.HexNMin,
+                o.HexNAcMax + o.HexNMax);
         }
         else if (o.HexNAcMax > 0)
         {
