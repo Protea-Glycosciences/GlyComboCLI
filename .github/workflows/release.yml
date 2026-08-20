@@ -1,0 +1,135 @@
+﻿name: Build GlyComboCLI release
+
+on:
+  push:
+    tags:
+      - '[0-9]*'
+
+permissions:
+  contents: write
+
+jobs:
+
+  build-portable:
+    name: Build portable .NET 8 package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.424'
+
+      - name: Restore
+        run: dotnet restore GlyComboCLI/GlyComboCLI.csproj
+
+      - name: Build
+        run: dotnet build GlyComboCLI/GlyComboCLI.csproj --configuration Release --no-restore
+
+      - name: Publish portable application
+        run: >
+          dotnet publish GlyComboCLI/GlyComboCLI.csproj
+          --configuration Release
+          --framework net8.0
+          --self-contained false
+          -p:UseAppHost=false
+          -p:DebugType=None
+          -p:DebugSymbols=false
+          --output publish/portable
+
+      - name: Smoke test portable application
+        run: dotnet publish/portable/GlyComboCLI.dll --help
+
+      - name: Create portable ZIP
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path "publish/portable/*" `
+            -DestinationPath "GlyComboCLI-${{ github.ref_name }}-portable-net8.0.zip"
+
+      - name: Upload portable artifact
+        uses: actions/upload-artifact@v7
+        with:
+          path: GlyComboCLI-${{ github.ref_name }}-portable-net8.0.zip
+          archive: false
+          if-no-files-found: error
+
+
+  build-windows:
+    name: Build Windows x64 package
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.424'
+
+      - name: Restore
+        run: dotnet restore GlyComboCLI/GlyComboCLI.csproj
+
+      - name: Publish Windows x64 application
+        run: >
+          dotnet publish GlyComboCLI/GlyComboCLI.csproj
+          --configuration Release
+          --framework net8.0
+          --runtime win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:DebugType=None
+          -p:DebugSymbols=false
+          --output publish/windows-x64
+
+      - name: Smoke test Windows executable
+        shell: pwsh
+        run: |
+          & "publish/windows-x64/GlyComboCLI.exe" --help
+
+      - name: Create Windows ZIP
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path "publish/windows-x64/*" `
+            -DestinationPath "GlyComboCLI-${{ github.ref_name }}-win-x64.zip"
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v7
+        with:
+          path: GlyComboCLI-${{ github.ref_name }}-win-x64.zip
+          archive: false
+          if-no-files-found: error
+
+
+  create-release:
+    name: Create GitHub Release
+    needs:
+      - build-portable
+      - build-windows
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: List release files
+        run: ls -lh release-assets
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            release-assets/*.zip \
+            --verify-tag \
+            --generate-notes \
+            --title "GlyComboCLI ${GITHUB_REF_NAME}"
