@@ -93,12 +93,3 @@ internal sealed record CompositionResult(
         return string.Join(separator, fields);
     }
 }
-
-internal sealed class Ms2ScanRecord
-{
-    public string ScanNumber { get; init; } = "";
-    public int Charge { get; init; }
-    public decimal RetentionTimeMinutes { get; init; }
-    public decimal TotalIonCurrent { get; init; }
-    public string FileName { get; init; } = "";
-}

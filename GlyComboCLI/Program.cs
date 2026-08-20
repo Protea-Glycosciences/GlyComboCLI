@@ -431,208 +431,46 @@ class Program
 
             async Task mzMLProcess()
             {
-                List<string> fileNames = [];
-                List<int> fileScans = [];
-                string polarity = "";
-                List<decimal> precursors = [];
-                // Read each line from the given file
-                StreamReader sr = new(options.file);
+                string ext = Path.GetExtension(options.file).ToLower();
+                bool isXmlDat = ext == ".dat" && File.ReadLines(options.file).First().Contains("xml");
+                mzmlFile = ext == ".mzml" || isXmlDat;
 
-                // Parse each line of the mzml to extract important information from MS2 scans of the mzML (polarity, precursor m/z, charge state, scan # for given MS2)
-                for (line = sr.ReadLine(); line != null; line = sr.ReadLine())
+                if (mzmlFile)
                 {
-                    // Problem: Bruker and Thermo mzmls have all lines in different positions
-                    // Thermo order: Spectrum index (including scan#), then "ms level" value="2", then "negative", then "selected ion m/z", then "charge state"
-                    // Bruker order: Spectrum index (including scan#), then "negative scan", then "ms level" value ="2", then "charge state", then "selected ion m/z"
-                    // Sciex doesn't use scan #, so we've adapted cycle and experiment number to make (X.Y) representation instead
-                    // Code modified to perform this per spectrum, rather than trying to hard code by line positions
-
-                    // find lines containing positive or negative mode, all vendors follow this requirement
-                    if (line.Contains("MS:1000129"))
+                    List<Ms2ScanRecord> ms2Records;
+                    try
                     {
-                        polarity = "negative";
+                        ms2Records = MzmlMs2Parser.Parse(options.file);
                     }
-                    if (line.Contains("MS:1000130"))
+                    catch (Exception ex)
                     {
-                        polarity = "positive";
+                        Console.WriteLine($"Failed to parse mzML file '{options.file}': {ex.Message}");
+                        return;
                     }
 
-                    // find lines containing retention time, to minute time scale
-                    if (line.Contains("MS:1000016"))
+                    if (ms2Records.Count == 0)
                     {
-                        // Bruker records retention time by the second
-                        if (line.Contains("unitName=\"second\""))
-                        {
-                            // split the line containing this by "
-                            RTLine = line.Split("\"");
-                            // After the 7th ", that's where the charge can be found, so convert it from string array into int
-                            retentionTime = decimal.Parse(RTLine[7]) / 60;
-                        }
+                        Console.WriteLine("No MS2 found in the given mzML file. Please confirm the selected file has MS2 scans, or select a different file.");
+                        return;
+                    }
+
+                    foreach (var r in ms2Records)
+                    {
+                        neutralPrecursorListmzml += Convert.ToString(r.NeutralPrecursorMass) + Environment.NewLine;
+                        if (decimal.TryParse(r.ScanNumber, System.Globalization.NumberStyles.Float,
+                                              System.Globalization.CultureInfo.InvariantCulture, out decimal scanNum))
+                            scans.Add(scanNum);
                         else
-                        // whereas Thermo/Sciex/Waters/Agilent records RT by the minute
-                        {
-                            // split the line containing this by "
-                            RTLine = line.Split("\"");
-                            // After the 7th ", that's where the charge can be found, so convert it from string array into int
-                            retentionTime = decimal.Parse(RTLine[7]);
-                        }
+                            scans.Add(0);
+                        charges.Add(r.Charge);
+                        retentionTimes.Add(r.RetentionTimeMinutes);
+                        TICs.Add(r.TotalIonCurrent);
+                        files.Add(r.FileName);
                     }
 
-                    // find lines containing total ion chromatogram intensity for that scan, only supported by Agilent, Thermo, Sciex, and Waters
-                    if (line.Contains("MS:1000285"))
-                    {
-                        // split the line containing this by "
-                        TICLine = line.Split("\"");
-                        // After the 7th ", that's where the charge can be found, so convert it from string array into int
-                        TIC = decimal.Parse(TICLine[7], System.Globalization.NumberStyles.AllowExponent | System.Globalization.NumberStyles.AllowDecimalPoint);
-                    }
-
-                    // find lines containing the precursor
-                    if (line.Contains("\"selected ion m/z\""))
-                    {
-                        // split the line containing this by "
-                        precursorLine = line.Split("\"");
-                        // After the 7th ", that's where the precursor m/z can be found, so convert it from string array into decimal for accuracy
-                        precursor = Math.Round(decimal.Parse(precursorLine[7]), 6);
-                    }
-                    // find lines containing the charge. Some vendors need this to be added via MSConvert as they don't automatically provide a charge state
-                    if (line.Contains("\"charge state\""))
-                    {
-                        // split the line containing this by "
-                        chargeLine = line.Split("\"");
-                        // After the 7th ", that's where the charge can be found, so convert it from string array into int
-                        charge = int.Parse(chargeLine[7]);
-                    }
-                    // Waters lines sometimes contain offsets with scan numbers outside of the spectra sections, so this is to ignore those lines
-                    if (line.Contains("offset idRef="))
-                    {
-                        continue;
-                    }
-
-                    // find lines containing the scan number
-                    if (line.Contains("scan=")
-                        // To ensure we don't pick up the Thermo spectrum title
-                        && line.Contains("defaultArrayLength")
-                        // To ensure we don't pick up the Waters ms scans
-                        && !line.Contains("function=")
-                        // To ensure we don't pick up the Agilent ms scans
-                        && !line.Contains("id=\"scanId"))
-                    {
-                        // split the line containing this by "
-                        scanLine = line.Split("\"");
-                        // After the 3rd ", that's where the scan # can be found. This is the Thermo-specific extraction:
-                        if (line.Contains("controller"))
-                        {
-                            scanNumber = scanLine[3].Replace("controllerType=0 controllerNumber=1 scan=", "");
-                        }
-                        // And this is for Bruker
-                        else
-                        {
-                            scanNumber = scanLine[3].Replace("scan=", "");
-                        }
-                    }
-
-                    // Agilent specific scan number interpreation, since they use structure of: id="scanId=4620"
-                    if (line.Contains("id=\"scanId")
-                    && line.Contains("defaultArrayLength"))
-                    {
-                        //split the line containing scan number by =
-                        scanLine = line.Split("=");
-                        // Scan # is after the 3rd "="
-                        scanNumber = scanLine[3].Replace("\" defaultArrayLength", "");
-                    }
-
-                    // Waters specific scan number interpretation, sometimes merged scans occur so we need to account for those as well
-                    if (line.Contains("function=")
-                    && line.Contains(" process=")
-                    && line.Contains("defaultArrayLength"))
-                    {
-                        //split the line containing scan number by =
-                        scanLine = line.Split("=");
-                        // If we convert without scan summing (e.g. MSConvert), we only have individual "spectrum" lists rather than combined "spectra". This selects for MSConvert output
-                        if (!line.Contains(" spectrum=")
-                            && !line.Contains(" spectra="))
-                        {
-                            // Scan # is after the 5th "="
-                            scanNumber = scanLine[5].Replace("\" defaultArrayLength", "");
-                        }
-                        else
-                        // This is for Waters DataConnect output where spectra can be merged (or unmerged).
-                        {
-                            if (line.Contains("merged"))
-                            {
-                                // Scan # is after the 7th "="
-                                scanNumber = scanLine[7].Replace("\" defaultArrayLength", "");
-                            }
-                            else
-                            {
-                                // Scan # is after the 6th "=" as it is a single spectrum
-                                scanNumber = scanLine[6].Replace("\" defaultArrayLength", "");
-                            }
-                        }
-
-                    }
-
-                    // Sciex specific scan number interpretation
-                    if (line.Contains(" cycle=")
-                        && line.Contains(" experiment=")
-                        && line.Contains("defaultArrayLength"))
-                    {
-                        //split the line containing cycle and experiment number by =
-                        scanLine = line.Split("=");
-                        // Cycle # is after the 5th "="
-                        string cycleScan = scanLine[5].Replace(" experiment", ".");
-                        string experimentScan = scanLine[6].Replace("\" defaultArrayLength", "");
-                        scanNumber = cycleScan + experimentScan;
-                    }
-
-                    // Wrapping everything together to form a neutral precursor mass, only if requirements are met
-
-                    if (line.Contains("</spectrum>"))
-                    {
-                        if (precursor != 0 && charge != 0)
-                        {
-                            // Convert precursor m/z and z to obtain neutral precursor mass
-                            if (polarity == "negative")
-                            {
-                                neutralPrecursorListmzml += Convert.ToString(charge * precursor + (charge * 1.007276m)) + Environment.NewLine;
-                                charge = -charge;
-                            }
-                            else if (polarity == "positive")
-                            {
-                                neutralPrecursorListmzml += Convert.ToString(charge * precursor - (charge * 1.007276m)) + Environment.NewLine;
-                            }
-                            // Put the scan value into a list of scan numbers that feature MS2.
-                            scans.Add(decimal.Parse(scanNumber));
-                            // Adds charge to a list for the end report
-                            charges.Add(charge);
-                            // Add RT to a list for the end report
-                            retentionTimes.Add(retentionTime);
-                            // Add TIC to a list for the end report
-                            TICs.Add(TIC);
-                            // Add stripped file name to the index
-                            string fileName = options.file.Substring(options.file.LastIndexOf('\\') + 1);
-                            files.Add(fileName);
-                        }
-                        precursor = 0;
-                        charge = 0;
-                        scanNumber = "";
-                        polarity = "";
-                        retentionTime = 0;
-                        TIC = 0;
-                    }
-                    string fileNameOutput = options.file.Substring(options.file.LastIndexOf('\\') + 1);
-                }
-                if (scans.Count == 0 && mzmlFile == true)
-                {
-                    Console.WriteLine("No MS2 found in the given mzML file. Please confirm the selected file has MS2 scans, or select a different file.");
-                    return;
-                }
-                else if (scans.Count > 0 && mzmlFile == true)
-                {
-                    // Provide number of scans for each filename
                     Console.WriteLine("File " + options.file + " has completed uploading with a total number of " + scans.Count + " MS2 scans identified.");
                 }
+
                 ProcessingSteps().GetAwaiter().GetResult();
             }
 

@@ -255,16 +255,16 @@ public class CompositionSearchTests
         string csv = result.ReadResultCsv();
         Assert.Contains("(Hex)3 (NeuAc)1 (HexNAc)1", csv);
         Assert.Contains("C44H70N5O29", csv);
-        
+
         Assert.Contains("(HexNAc)3", csv);
         Assert.Contains("C31H49N6O16", csv);
-        
+
         Assert.Contains("(Hex)4", csv);
         Assert.Contains("C31H50N3O21", csv);
-        
+
         Assert.Contains("(HexNAc)1", csv);
         Assert.Contains("C15H23N4O6", csv);
-        
+
         Assert.Contains("(Hex)1 (NeuAc)1", csv);
         Assert.Contains("C24H37N4O14", csv);
 
@@ -313,16 +313,16 @@ public class CompositionSearchTests
 
         Assert.Contains("(HexA)1 (Pent)1", csv);
         Assert.Contains("C18H32O11", csv);
-        
+
         Assert.Contains("(NeuAc)1 (NeuGc)1 (HexNAc)1", csv);
         Assert.Contains("C46H81N3O23", csv);
-        
+
         Assert.Contains("(Hex)1 (HexNAc)1 (Phos)1", csv);
         Assert.Contains("C23H44N1O14P1", csv);
-        
+
         Assert.Contains("(Hex)1 (HexNAc)1 (Sulf)1", csv);
         Assert.Contains("C21H39N1O14S1", csv);
-    
+
     }
 
     [Fact(DisplayName = "#10 Peracetylated, HexN and HexNAc both enabled -> combined label (glycan_dummy_deriv.txt)")]
@@ -375,7 +375,7 @@ public class CompositionSearchTests
         Assert.Contains("(Hex)1 (HexNAc/HexN)1 (Sulf)1", csv);
         Assert.Contains("C26H37N1O20S", csv);
 
-    
+
     }
 
     [Fact(DisplayName = "#11 Peracetylated, only HexNAc enabled -> HexNAc label (glycan_dummy_deriv.txt)")]
@@ -414,19 +414,19 @@ public class CompositionSearchTests
         string csv = result.ReadResultCsv();
         Assert.Contains("(dHex)1 (KDN)1 (Hex)1 (HexNAc)1", csv);
         //Assert.Contains("C53H73N1O35", csv);
-        
+
         Assert.Contains("(HexA)1 (Pent)1", csv);
         //Assert.Contains("C23H30O17", csv);
-        
+
         Assert.Contains("(NeuAc)1 (NeuGc)1 (HexNAc)1", csv);
         //Assert.Contains("C52H71N3O34", csv);
-        
+
         Assert.Contains("(Hex)1 (HexNAc)1 (Phos)1", csv);
         //Assert.Contains("C26H38N1O20P1", csv);
-        
+
         Assert.Contains("(Hex)1 (HexNAc)1 (Sulf)1", csv);
         //Assert.Contains("C26H37N1O20S1", csv);
-    
+
     }
 
     [Fact(DisplayName = "#12 Peracetylated, only HexN enabled -> HexN label (glycan_dummy_deriv.txt)")]
@@ -465,19 +465,19 @@ public class CompositionSearchTests
         string csv = result.ReadResultCsv();
         Assert.Contains("(dHex)1 (KDN)1 (Hex)1 (HexN)1", csv);
         Assert.Contains("C53H73N1O35", csv);
-        
+
         Assert.Contains("(HexA)1 (Pent)1", csv);
         Assert.Contains("C23H30O17", csv);
-        
+
         Assert.Contains("(NeuAc)1 (NeuGc)1 (HexN)1", csv);
         Assert.Contains("C52H71N3O34", csv);
-        
+
         Assert.Contains("(Hex)1 (HexN)1 (Phos)1", csv);
         Assert.Contains("C26H38N1O20P", csv);
-        
+
         Assert.Contains("(Hex)1 (HexN)1 (Sulf)1", csv);
         Assert.Contains("C26H37N1O20S", csv);
-    
+
     }
 
     // ---- Tests 13-17: mzML input across vendors (writes *_SkylineImport.csv) ----
