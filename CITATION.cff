@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+title: GlyComboCLI
+type: software
+repository: https://github.com/Protea-Glycosciences/GlyComboCLI
+identifiers:
+- type: other
+  value: glycombocli
+  description: bio.tools
+license: Apache-2.0
+keywords:
+- term: Biochemistry
+  uri: http://edamontology.org/topic_3292
+- term: Omics
+  uri: http://edamontology.org/topic_3391
+abstract: GlyComboCLI is an open source command line interface for combinatorial glycan
+  composition determination to identify glycans in MS acquisitions of glycan-containing
+  samples in text or mzML formats. This application enables rapid extraction of precursor
+  m/z values from mzML files, a vendor-neutral format that ensures cross-platform
+  compatibility.
+message: If you use this software, please cite it using this CITATION.cff.

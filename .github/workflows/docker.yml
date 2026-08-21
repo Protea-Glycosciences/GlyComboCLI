@@ -1,0 +1,282 @@
+﻿name: Build, Galaxy-test, and publish Docker image
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - main
+
+  push:
+    branches:
+      - main
+    tags:
+      - '[0-9]*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOCKERHUB_IMAGE: proteaglycosciences/glycombo
+  TEST_IMAGE: proteaglycosciences/glycombo:ci-${{ github.sha }}
+  PLANEMO_PYPI_VERSION: '0.75.46'
+  GALAXY_BRANCH: 'release_26.0'
+
+jobs:
+  docker:
+    name: Build and test GlyComboCLI container
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      # ------------------------------------------------------------
+      # Check out GlyComboCLI
+      # ------------------------------------------------------------
+
+      - name: Checkout GlyComboCLI
+        uses: actions/checkout@v7
+
+
+      # ------------------------------------------------------------
+      # Build the candidate Docker image
+      #
+      # This image is loaded into the runner's local Docker daemon.
+      # Nothing is pushed to Docker Hub at this stage.
+      # ------------------------------------------------------------
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build candidate Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          push: false
+          tags: ${{ env.TEST_IMAGE }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+
+      # ------------------------------------------------------------
+      # Basic container checks
+      # ------------------------------------------------------------
+
+      - name: Inspect candidate image
+        run: docker image inspect "${TEST_IMAGE}"
+
+      - name: Smoke test GlyComboCLI
+        run: docker run --rm "${TEST_IMAGE}" /app/GlyComboCLI --help
+
+      - name: Verify Galaxy executable is present
+        run: |
+          docker run --rm \
+            "${TEST_IMAGE}" \
+            /bin/sh -c "test -x /app/GlyComboCLI && ls -l /app/GlyComboCLI"
+            
+      - name: Verify container supports Galaxy shell execution
+        run: |
+          docker run --rm \
+            "${TEST_IMAGE}" \
+            /bin/sh -c "echo 'Galaxy shell execution OK'"
+
+
+      # ------------------------------------------------------------
+      # Check out the Galaxy wrapper and its existing tests
+      # ------------------------------------------------------------
+
+      - name: Checkout GlyComboGalaxy
+        uses: actions/checkout@v7
+        with:
+          repository: Protea-Glycosciences/GlyComboGalaxy
+          path: galaxy-wrapper
+
+
+      # ------------------------------------------------------------
+      # Set up Planemo
+      # ------------------------------------------------------------
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install Planemo
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "planemo==${PLANEMO_PYPI_VERSION}"
+
+      - name: Show Planemo version
+        run: planemo --version
+
+
+      # ------------------------------------------------------------
+      # Point the checked-out Galaxy wrapper at the candidate image
+      #
+      # This modifies only the temporary checkout used by CI.
+      # Nothing is committed back to GlyComboGalaxy.
+      #
+      # It ensures Galaxy tests THIS build rather than downloading
+      # the currently published Docker Hub image.
+      # ------------------------------------------------------------
+
+      - name: Point Galaxy wrapper at candidate image
+        env:
+          CANDIDATE_IMAGE: ${{ env.TEST_IMAGE }}
+        run: |
+          python - <<'PY'
+          import os
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          wrapper = Path("galaxy-wrapper/glycombocli.xml")
+
+          tree = ET.parse(wrapper)
+          root = tree.getroot()
+
+          containers = root.findall(".//container[@type='docker']")
+
+          if len(containers) != 1:
+              raise RuntimeError(
+                  f"Expected exactly one Docker container requirement, "
+                  f"found {len(containers)}"
+              )
+
+          container = containers[0]
+          old_image = (container.text or "").strip()
+          new_image = os.environ["CANDIDATE_IMAGE"]
+
+          print(f"Galaxy wrapper originally used: {old_image}")
+          print(f"Galaxy wrapper will test:       {new_image}")
+
+          container.text = new_image
+
+          tree.write(
+              wrapper,
+              encoding="utf-8",
+              xml_declaration=True
+          )
+          PY
+
+      - name: Show candidate container requirement
+        run: |
+          grep -n "container" galaxy-wrapper/glycombocli.xml
+
+
+      # ------------------------------------------------------------
+      # Validate the Galaxy wrapper
+      # ------------------------------------------------------------
+
+      - name: Lint Galaxy wrapper
+        run: planemo lint galaxy-wrapper/glycombocli.xml
+
+
+      # ------------------------------------------------------------
+      # Full Galaxy integration test
+      #
+      # Planemo reads the <tests> section of glycombocli.xml.
+      # This therefore runs the existing GlyComboGalaxy tests,
+      # including highman.txt and the other parameter/vendor tests.
+      #
+      # --docker tells Galaxy to execute the tool using the Docker
+      # container specified in the wrapper.
+      # ------------------------------------------------------------
+
+      - name: Run GlyComboGalaxy tests with candidate image
+        run: |
+          planemo test galaxy-wrapper/glycombocli.xml \
+            --install_galaxy \
+            --galaxy_branch "${GALAXY_BRANCH}" \
+            --docker \
+            --test_data galaxy-wrapper/test-data \
+            --test_output galaxy-tool-test.html \
+            --test_output_json galaxy-tool-test.json \
+            --test_output_xunit galaxy-tool-test.xml \
+            --summary compact
+
+
+      # ------------------------------------------------------------
+      # Preserve Galaxy test reports even when tests fail
+      # ------------------------------------------------------------
+
+      - name: Upload Galaxy test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: galaxy-integration-test-${{ github.sha }}
+          path: |
+            galaxy-tool-test.html
+            galaxy-tool-test.json
+            galaxy-tool-test.xml
+          if-no-files-found: warn
+
+
+      # ------------------------------------------------------------
+      # Docker Hub publication
+      #
+      # Only version tags are published.
+      #
+      # Pull requests, pushes to main, and manual workflow runs
+      # build and test but DO NOT modify Docker Hub.
+      # ------------------------------------------------------------
+
+      - name: Log in to Docker Hub
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+
+      # ------------------------------------------------------------
+      # Tag the EXACT image that passed the Galaxy tests.
+      #
+      # For Git tag 0.1.1:
+      #
+      # proteaglycosciences/glycombo:0.1.1
+      # proteaglycosciences/glycombo:latest
+      # ------------------------------------------------------------
+
+      - name: Tag tested image for release
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          docker tag \
+            "${TEST_IMAGE}" \
+            "${DOCKERHUB_IMAGE}:${GITHUB_REF_NAME}"
+
+          docker tag \
+            "${TEST_IMAGE}" \
+            "${DOCKERHUB_IMAGE}:latest"
+
+
+      # ------------------------------------------------------------
+      # Push only after every preceding test has succeeded.
+      # ------------------------------------------------------------
+
+      - name: Push versioned Docker image
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          docker push "${DOCKERHUB_IMAGE}:${GITHUB_REF_NAME}"
+
+      - name: Push latest Docker image
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          docker push "${DOCKERHUB_IMAGE}:latest"
+
+
+      # ------------------------------------------------------------
+      # Display final release information
+      # ------------------------------------------------------------
+
+      - name: Docker release summary
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          echo "Galaxy tests passed."
+          echo "Published:"
+          echo "  ${DOCKERHUB_IMAGE}:${GITHUB_REF_NAME}"
+          echo "  ${DOCKERHUB_IMAGE}:latest"
