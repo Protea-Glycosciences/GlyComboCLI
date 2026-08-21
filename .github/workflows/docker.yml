@@ -258,9 +258,9 @@ jobs:
       # ------------------------------------------------------------
       # Tag the EXACT image that passed the Galaxy tests.
       #
-      # For Git tag 0.1.1:
+      # For Git tag 1.0.0:
       #
-      # proteaglycosciences/glycombo:0.1.1
+      # proteaglycosciences/glycombo:1.0.0
       # proteaglycosciences/glycombo:latest
       # ------------------------------------------------------------
 

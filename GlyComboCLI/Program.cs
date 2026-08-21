@@ -136,7 +136,7 @@ class Program
     {
         Console.WriteLine();
         Console.WriteLine("╔══════════════════════════════════════════════════════════════╗");
-        Console.WriteLine("║                     GlyComboCLI  v1.1                        ║");
+        Console.WriteLine("║                     GlyComboCLI  v1.0.0                      ║");
         Console.WriteLine("║       Monosaccharide Combinatorial Assignment for MS         ║");
         Console.WriteLine("╠══════════════════════════════════════════════════════════════╣");
         Console.WriteLine("║  Rapidly assigns monosaccharide combinations to observed     ║");
@@ -1046,7 +1046,7 @@ class Program
 
                 Console.WriteLine("File processing complete. Output written to: " + filePath1);
 
-                string submitOutput = "GlyComboCLI (v1.1) search output" + Environment.NewLine;
+                string submitOutput = "GlyComboCLI (v1.0.0) search output" + Environment.NewLine;
                 submitOutput += "<Input file> " + Path.GetFileName(options.file) + Environment.NewLine;
                 submitOutput += "<Error tolerance> " + options.massError + "," + options.massErrorType + Environment.NewLine;
                 submitOutput += "<Reducing end> " + options.reducedEnd + Environment.NewLine;
