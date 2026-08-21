@@ -1050,7 +1050,7 @@ class Program
                 submitOutput += "<Input file> " + Path.GetFileName(options.file) + Environment.NewLine;
                 submitOutput += "<Error tolerance> " + options.massError + "," + options.massErrorType + Environment.NewLine;
                 submitOutput += "<Reducing end> " + options.reducedEnd + Environment.NewLine;
-                if (options.reducedEnd.ToString() == "Custom")
+                if (options.reducedEnd.ToString() == "custom")
                 {
                     submitOutput += "Custom reducing end: Name, Mass, #C, #H, #N, #O";
                     submitOutput += "<Custom reducing end> " + options.customReducingName + "," + options.customReducedMassOutput + "," + options.customReducingCCount + "," + options.customReducingHCount + "," + options.customReducingOCount + "," + options.customReducingNCount;
