@@ -71,14 +71,19 @@ jobs:
         run: docker image inspect "${TEST_IMAGE}"
 
       - name: Smoke test GlyComboCLI
-        run: docker run --rm "${TEST_IMAGE}" --help
+        run: docker run --rm "${TEST_IMAGE}" /app/GlyComboCLI --help
 
       - name: Verify Galaxy executable is present
         run: |
           docker run --rm \
-            --entrypoint /bin/sh \
             "${TEST_IMAGE}" \
-            -c "test -x /app/GlyComboCLI && ls -l /app/GlyComboCLI"
+            /bin/sh -c "test -x /app/GlyComboCLI && ls -l /app/GlyComboCLI"
+            
+      - name: Verify container supports Galaxy shell execution
+        run: |
+          docker run --rm \
+            "${TEST_IMAGE}" \
+            /bin/sh -c "echo 'Galaxy shell execution OK'"
 
 
       # ------------------------------------------------------------
