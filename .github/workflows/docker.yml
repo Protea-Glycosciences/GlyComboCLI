@@ -39,6 +39,27 @@ jobs:
 
       - name: Checkout GlyComboCLI
         uses: actions/checkout@v7
+        
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.424'
+
+      - name: Publish GlyComboCLI for unit tests
+        run: |
+          dotnet publish GlyComboCLI/GlyComboCLI.csproj \
+            --configuration Release \
+            --runtime linux-x64 \
+            --self-contained false \
+            --output artifacts/test-cli
+
+      - name: Run GlyComboCLI unit tests
+        env:
+          GLYCOMBO_CLI_PATH: ${{ github.workspace }}/artifacts/test-cli/GlyComboCLI
+        run: |
+          dotnet test GlyComboCLI.Tests/GlyComboCLI.Tests.csproj \
+            --configuration Release \
+            --verbosity normal
 
 
       # ------------------------------------------------------------
