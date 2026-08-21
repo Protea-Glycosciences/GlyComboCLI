@@ -15,7 +15,6 @@ RUN dotnet publish GlyComboCLI/GlyComboCLI.csproj \
     --configuration Release \
     --framework net8.0 \
     --self-contained false \
-    -p:UseAppHost=false \
     -p:DebugType=None \
     -p:DebugSymbols=false \
     --output /app/publish
@@ -28,4 +27,4 @@ WORKDIR /app
 
 COPY --from=build /app/publish .
 
-ENTRYPOINT ["dotnet", "GlyComboCLI.dll"]
+ENTRYPOINT ["/app/GlyComboCLI"]
