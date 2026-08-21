@@ -122,6 +122,7 @@ jobs:
         with:
           path: release-assets
           merge-multiple: true
+          skip-decompress: true
 
       - name: List release files
         run: ls -lh release-assets
