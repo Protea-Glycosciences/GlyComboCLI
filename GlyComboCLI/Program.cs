@@ -1,14 +1,18 @@
-﻿using System;
+using GlyCombo;
+using GlyComboCLI;
+using System;
+using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
-using System.IO;
 using System.CommandLine.NamingConventionBinder;
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Security.AccessControl;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Runtime.InteropServices;
-using System.Security.AccessControl;
-using System.Collections.Generic;
+using static GlyComboCLI.MonosaccharideDefinition;
 
 
 public class CommandOptions
@@ -122,6 +126,7 @@ public class CommandOptions
     public string? file { get; set; }
     public string? adducts { get; set; }
     public bool? offByOne { get; set; }
+    public bool noGlyTouCan { get; set; }
     public string? outputPath { get; set; }
 
 }
@@ -131,7 +136,7 @@ class Program
     {
         Console.WriteLine();
         Console.WriteLine("╔══════════════════════════════════════════════════════════════╗");
-        Console.WriteLine("║                     GlyComboCLI  v1.0                        ║");
+        Console.WriteLine("║                     GlyComboCLI  v1.1                        ║");
         Console.WriteLine("║       Monosaccharide Combinatorial Assignment for MS         ║");
         Console.WriteLine("╠══════════════════════════════════════════════════════════════╣");
         Console.WriteLine("║  Rapidly assigns monosaccharide combinations to observed     ║");
@@ -166,7 +171,6 @@ class Program
         string solutions;
         string solutionMultiples = "";
         int targetsToAdd;
-        int iterations;
         decimal targetLow = 0;
         decimal targetHigh = 0;
         string reducedEnd = "";
@@ -238,6 +242,9 @@ class Program
         List<int> targetIndex = new List<int>();
         List<decimal> targets = new List<decimal>();
         List<string> targetStrings = new List<string>();
+        List<MonosaccharideDefinition> catalog = new();
+        List<CompositionResult> results = new();
+        long iterations = 0;
 
 
         var rootCommand = new RootCommand
@@ -350,14 +357,16 @@ class Program
         new Option<decimal>(new[] {"--massError", "-E" }, "Mass error value, e.g. \"30\" or \"0.6\""),
         new Option<string>(new[] {"--massErrorType", "-T" }, "Mass error type can either be Da or ppm"),
         new Option<bool>(new[] {"--offByOne", "-O" }, "if set to true, enables off-by-one searching for cases of incorrect monoisotopic precursor determination"),
+        new Option<bool>(new[] {"--noGlyTouCan", "-N" }, "Disable GlyTouCan base-composition accession annotation in output files"),
         new Option<string>(new[] {"--file", "-F" }, "Path to the input file, either .mzml, or .txt/.dat (mass list)"), // File upload option
         new Option<string>(new[] {"--outputPath"}, "Path for the output files (optional)"),
-    
+
     };
         PrintBanner();
         rootCommand.Description = "A CLI for GlyCombo, allowing rapid assignment of monosaccharide combinations to observed and fragmented precursors in mass spectrometry experiments" + Environment.NewLine + Environment.NewLine + "Example command: GlyComboCLI.exe -F=\".\\example.mzML\" -hMin=1 -hMax=12 -nMin=2 -nMax=8 -sMin=0 -sMax=2 -fMin=0 -fMax=3 -gMin=0 -gMax=2 -D=\"Native\" -R=\"Reduced\" -T=Da -E=\"0.6\"" + Environment.NewLine + Environment.NewLine + "Questions, comments and bug reports:" + Environment.NewLine + "https://github.com/Protea-Glycosciences/GlyComboCLI" + Environment.NewLine + "chris@proteaglyco.com" + Environment.NewLine + "GlyComboCLI release: v0.0";
         rootCommand.Handler = CommandHandler.Create<CommandOptions>(options =>
         {
+            Stopwatch stopwatch = Stopwatch.StartNew();
             if (string.IsNullOrWhiteSpace(options.file) || !File.Exists(options.file))
             {
                 Console.WriteLine("No valid file path provided or file does not exist. Search terminated.");
@@ -422,206 +431,46 @@ class Program
 
             async Task mzMLProcess()
             {
-                List<string> fileNames = [];
-                List<int> fileScans = [];
-                string polarity = "";
-                List<decimal> precursors = [];
-                // Read each line from the given file
-                StreamReader sr = new(options.file);
+                string ext = Path.GetExtension(options.file).ToLower();
+                bool isXmlDat = ext == ".dat" && File.ReadLines(options.file).First().Contains("xml");
+                mzmlFile = ext == ".mzml" || isXmlDat;
 
-                // Parse each line of the mzml to extract important information from MS2 scans of the mzML (polarity, precursor m/z, charge state, scan # for given MS2)
-                for (line = sr.ReadLine(); line != null; line = sr.ReadLine())
+                if (mzmlFile)
                 {
-                    // Problem: Bruker and Thermo mzmls have all lines in different positions
-                    // Thermo order: Spectrum index (including scan#), then "ms level" value="2", then "negative", then "selected ion m/z", then "charge state"
-                    // Bruker order: Spectrum index (including scan#), then "negative scan", then "ms level" value ="2", then "charge state", then "selected ion m/z"
-                    // Sciex doesn't use scan #, so we've adapted cycle and experiment number to make (X.Y) representation instead
-                    // Code modified to perform this per spectrum, rather than trying to hard code by line positions
-
-                    // find lines containing positive or negative mode, all vendors follow this requirement
-                    if (line.Contains("MS:1000129"))
+                    List<Ms2ScanRecord> ms2Records;
+                    try
                     {
-                        polarity = "negative";
+                        ms2Records = MzmlMs2Parser.Parse(options.file);
                     }
-                    if (line.Contains("MS:1000130"))
+                    catch (Exception ex)
                     {
-                        polarity = "positive";
+                        Console.WriteLine($"Failed to parse mzML file '{options.file}': {ex.Message}");
+                        return;
                     }
 
-                    // find lines containing retention time, to minute time scale
-                    if (line.Contains("MS:1000016"))
+                    if (ms2Records.Count == 0)
                     {
-                        // Bruker records retention time by the second
-                        if (line.Contains("unitName=\"second\""))
-                        {
-                            // split the line containing this by "
-                            RTLine = line.Split("\"");
-                            // After the 7th ", that's where the charge can be found, so convert it from string array into int
-                            retentionTime = decimal.Parse(RTLine[7]) / 60;
-                        }
+                        Console.WriteLine("No MS2 found in the given mzML file. Please confirm the selected file has MS2 scans, or select a different file.");
+                        return;
+                    }
+
+                    foreach (var r in ms2Records)
+                    {
+                        neutralPrecursorListmzml += Convert.ToString(r.NeutralPrecursorMass) + Environment.NewLine;
+                        if (decimal.TryParse(r.ScanNumber, System.Globalization.NumberStyles.Float,
+                                              System.Globalization.CultureInfo.InvariantCulture, out decimal scanNum))
+                            scans.Add(scanNum);
                         else
-                        // whereas Thermo/Sciex/Waters/Agilent records RT by the minute
-                        {
-                            // split the line containing this by "
-                            RTLine = line.Split("\"");
-                            // After the 7th ", that's where the charge can be found, so convert it from string array into int
-                            retentionTime = decimal.Parse(RTLine[7]);
-                        }
+                            scans.Add(0);
+                        charges.Add(r.Charge);
+                        retentionTimes.Add(r.RetentionTimeMinutes);
+                        TICs.Add(r.TotalIonCurrent);
+                        files.Add(r.FileName);
                     }
 
-                    // find lines containing total ion chromatogram intensity for that scan, only supported by Agilent, Thermo, Sciex, and Waters
-                    if (line.Contains("MS:1000285"))
-                    {
-                        // split the line containing this by "
-                        TICLine = line.Split("\"");
-                        // After the 7th ", that's where the charge can be found, so convert it from string array into int
-                        TIC = decimal.Parse(TICLine[7], System.Globalization.NumberStyles.AllowExponent | System.Globalization.NumberStyles.AllowDecimalPoint);
-                    }
-
-                    // find lines containing the precursor
-                    if (line.Contains("\"selected ion m/z\""))
-                    {
-                        // split the line containing this by "
-                        precursorLine = line.Split("\"");
-                        // After the 7th ", that's where the precursor m/z can be found, so convert it from string array into decimal for accuracy
-                        precursor = Math.Round(decimal.Parse(precursorLine[7]), 6);
-                    }
-                    // find lines containing the charge. Some vendors need this to be added via MSConvert as they don't automatically provide a charge state
-                    if (line.Contains("\"charge state\""))
-                    {
-                        // split the line containing this by "
-                        chargeLine = line.Split("\"");
-                        // After the 7th ", that's where the charge can be found, so convert it from string array into int
-                        charge = int.Parse(chargeLine[7]);
-                    }
-                    // Waters lines sometimes contain offsets with scan numbers outside of the spectra sections, so this is to ignore those lines
-                    if (line.Contains("offset idRef="))
-                    {
-                        continue;
-                    }
-
-                    // find lines containing the scan number
-                    if (line.Contains("scan=")
-                        // To ensure we don't pick up the Thermo spectrum title
-                        && line.Contains("defaultArrayLength")
-                        // To ensure we don't pick up the Waters ms scans
-                        && !line.Contains("function=")
-                        // To ensure we don't pick up the Agilent ms scans
-                        && !line.Contains("id=\"scanId"))
-                    {
-                        // split the line containing this by "
-                        scanLine = line.Split("\"");
-                        // After the 3rd ", that's where the scan # can be found. This is the Thermo-specific extraction:
-                        if (line.Contains("controller"))
-                        {
-                            scanNumber = scanLine[3].Replace("controllerType=0 controllerNumber=1 scan=", "");
-                        }
-                        // And this is for Bruker
-                        else
-                        {
-                            scanNumber = scanLine[3].Replace("scan=", "");
-                        }
-                    }
-
-                    // Agilent specific scan number interpreation, since they use structure of: id="scanId=4620"
-                    if (line.Contains("id=\"scanId")
-                    && line.Contains("defaultArrayLength"))
-                    {
-                        //split the line containing scan number by =
-                        scanLine = line.Split("=");
-                        // Scan # is after the 3rd "="
-                        scanNumber = scanLine[3].Replace("\" defaultArrayLength", "");
-                    }
-
-                    // Waters specific scan number interpretation, sometimes merged scans occur so we need to account for those as well
-                    if (line.Contains("function=")
-                    && line.Contains(" process=")
-                    && line.Contains("defaultArrayLength"))
-                    {
-                        //split the line containing scan number by =
-                        scanLine = line.Split("=");
-                        // If we convert without scan summing (e.g. MSConvert), we only have individual "spectrum" lists rather than combined "spectra". This selects for MSConvert output
-                        if (!line.Contains(" spectrum=")
-                            && !line.Contains(" spectra="))
-                        {
-                            // Scan # is after the 5th "="
-                            scanNumber = scanLine[5].Replace("\" defaultArrayLength", "");
-                        }
-                        else
-                        // This is for Waters DataConnect output where spectra can be merged (or unmerged).
-                        {
-                            if (line.Contains("merged"))
-                            {
-                                // Scan # is after the 7th "="
-                                scanNumber = scanLine[7].Replace("\" defaultArrayLength", "");
-                            }
-                            else
-                            {
-                                // Scan # is after the 6th "=" as it is a single spectrum
-                                scanNumber = scanLine[6].Replace("\" defaultArrayLength", "");
-                            }
-                        }
-
-                    }
-
-                    // Sciex specific scan number interpretation
-                    if (line.Contains(" cycle=")
-                        && line.Contains(" experiment=")
-                        && line.Contains("defaultArrayLength"))
-                    {
-                        //split the line containing cycle and experiment number by =
-                        scanLine = line.Split("=");
-                        // Cycle # is after the 5th "="
-                        string cycleScan = scanLine[5].Replace(" experiment", ".");
-                        string experimentScan = scanLine[6].Replace("\" defaultArrayLength", "");
-                        scanNumber = cycleScan + experimentScan;
-                    }
-
-                    // Wrapping everything together to form a neutral precursor mass, only if requirements are met
-
-                    if (line.Contains("</spectrum>"))
-                    {
-                        if (precursor != 0 && charge != 0)
-                        {
-                            // Convert precursor m/z and z to obtain neutral precursor mass
-                            if (polarity == "negative") {
-                                neutralPrecursorListmzml += Convert.ToString(charge * precursor + (charge * 1.007276m)) + Environment.NewLine;
-                                charge = -charge;
-                            }
-                            else if (polarity == "positive") {
-                                neutralPrecursorListmzml += Convert.ToString(charge * precursor - (charge * 1.007276m)) + Environment.NewLine;
-                            }
-                            // Put the scan value into a list of scan numbers that feature MS2.
-                            scans.Add(decimal.Parse(scanNumber));
-                            // Adds charge to a list for the end report
-                            charges.Add(charge);
-                            // Add RT to a list for the end report
-                            retentionTimes.Add(retentionTime);
-                            // Add TIC to a list for the end report
-                            TICs.Add(TIC);
-                            // Add stripped file name to the index
-                            string fileName = options.file.Substring(options.file.LastIndexOf('\\') + 1);
-                            files.Add(fileName);
-                        }
-                        precursor = 0;
-                        charge = 0;
-                        scanNumber = "";
-                        polarity = "";
-                        retentionTime = 0;
-                        TIC = 0;
-                    }
-                    string fileNameOutput = options.file.Substring(options.file.LastIndexOf('\\') + 1);
-                }
-                if (scans.Count == 0 && mzmlFile == true)
-                {
-                    Console.WriteLine("No MS2 found in the given mzML file. Please confirm the selected file has MS2 scans, or select a different file.");
-                    return;
-                }
-                else if (scans.Count > 0 && mzmlFile == true)
-                {
-                    // Provide number of scans for each filename
                     Console.WriteLine("File " + options.file + " has completed uploading with a total number of " + scans.Count + " MS2 scans identified.");
                 }
+
                 ProcessingSteps().GetAwaiter().GetResult();
             }
 
@@ -642,230 +491,21 @@ class Program
 
             mzMLProcess().GetAwaiter().GetResult();
 
-            async Task ProcessingSteps() {
+            async Task ProcessingSteps()
+            {
                 try
                 {
-                    solutionMultiples = "";
-                    // Define the components in the combinatorial analysis: native, permethylated, peracetylated
-                    if (options.derivatisation == "native")
-                    {
-                        // Native
-                        dhex = 146.057908m; // permethylated mass = 174.089210 chemical formula = C8H14O4
-                        hex = 162.052823m; // permethylated mass = 204.099775 chemical formula = C9H16O5
-                        hexnac = 203.079372m; // permethylated mass = 245.126324 chemical formula = C11H19NO5
-                        hexn = 161.068808m; // permethylated mass = 217.131409 chemical formula = C10H19NO4
-                        hexa = 176.032088m; // permethylated mass = 218.079040 chemical formula = C9H14O6
-                        dhexnac = 187.084458m; // permethylated mass = 215.115759 chemical formula = C10H17N1O4
-                        pent = 132.042258m; // permethylated mass = 160.073560 chemical formula = C7H12O4
-                        kdn = 250.068867m; // permethylated mass = 320.147120 chemical formula = C14H24O8
-                        neuac = 291.095416m; // permethylated mass = 361.173669 chemical formula = C16H27NO8
-                        neugc = 307.090331m; // permethylated mass = 391.184234 chemical formula = C17H29NO9
-                        phos = 79.966331m; // permethylated mass = 93.981983 chemical formula = CH3O3P
-                        lneuac = 273.0848518m;
-                        eeneuac = 319.1267166m;
-                        dneuac = 318.1427011m;
-                        amneuac = 290.1114009m;
-                        acetyl = 42.010565m;
-                        lneugc = 289.0797664m;
-                        eeneugc = 335.1216313m;
-                        dneugc = 306.1063155m;
-                        amneugc = 334.1376157m;
-                        sulf = 79.956815m; // SO3
-                    }
-                    if (options.derivatisation == "permethylated")
-                    {
-                        // Permethylated
-                        dhex = 174.089210m; // chemical formula = C8H14O4
-                        hex = 204.099775m; //  chemical formula = C9H16O5
-                        hexnac = 245.126324m; //  chemical formula = C11H19NO5
-                        hexn = 203.115758m; //  chemical formula = C9H17NO4
-                        hexa = 218.079040m; //  chemical formula = C9H14O6
-                        dhexnac = 215.115758m; //  chemical formula = C10H17N1O4
-                        pent = 160.073560m; //  chemical formula = C7H12O4
-                        kdn = 320.147120m; // chemical formula = C14H24O8
-                        neuac = 361.173669m; // chemical formula = C16H27NO8
-                        neugc = 391.184234m; // chemical formula = C17H29NO9
-                        phos = 93.981980m; // chemical formula = PO3H3C1
-                        sulf = 65.941165m; // chemical formula = SO3C-1H-2
-                    }
-                    if (options.derivatisation == "peracetylated")
-                    {
-                        // Peracetylated
-                        dhex = 230.079038m; // chemical formula = C10H14O6
-                        hex = 288.084517m; // chemical formula = C12H16O8
-                        hexnac = 287.100501m; // chemical formula = C12H17NO7
-                        hexn = 287.100501m; // chemical formula = C12H17NO7
-                        hexa = 260.053217m; // chemical formula = C10H12O8
-                        dhexnac = 247.105587m; // chemical formula = C10H17NO6
-                        pent = 216.063388m; // chemical formula = C9H12O6
-                        kdn = 376.100561m; // chemical formula = C15H20O11
-                        neuac = 417.127110m; // chemical formula = C17H23NO11
-                        neugc = 475.132593m; // chemical formula = C19H25NO13
-                        phos = 37.955765m; // chemical formula = PO2C-2H-1
-                        sulf = 37.946250m; // chemical formula = SO2C-2H-2
-                    }
+                    results.Clear();
 
-                    // Add the components to combinatorial analysis based on which monosaccharides the user chooses to include
-                    if (options.HexMax > 0)
-                    {
-                        currentMonosaccharideSelection += "Hex(" + options.HexMin + "-" + options.HexMax + "), ";
-                        numbers.Add(hex);
-                    }
+                    catalog = MonosaccharideCatalog.BuildActive(options);
+                    numbers = catalog.Select(d => d.Mass).ToList();
+                    currentMonosaccharideSelection = MonosaccharideCatalog.FormatParameterReport(catalog);
 
-                    if (options.HexAMax > 0)
-                    {
-                        currentMonosaccharideSelection += "HexA(" + options.HexAMin + "-" + options.HexAMax + "), ";
-                        numbers.Add(hexa);
-                    }
-
-                    if (options.dHexMax > 0)
-                    {
-                        currentMonosaccharideSelection += "dHex(" + options.dHexMin + "-" + options.dHexMax + "), ";
-                        numbers.Add(dhex);
-                    }
-
-                    if (options.HexNAcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "HexNAc(" + options.HexNAcMin + "-" + options.HexNAcMax + "), ";
-                        numbers.Add(hexnac);
-                    }
-
-                    if (options.HexNMax > 0)
-                    {
-                        currentMonosaccharideSelection += "HexN(" + options.HexNMin + "-" + options.HexNMax + "), ";
-                        numbers.Add(hexn);
-                    }
-
-                    if (options.dHexNAcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "dHexNAc(" + options.dHexNAcMin + "-" + options.dHexNAcMax + "), ";
-                        numbers.Add(dhexnac);
-                    }
-
-                    if (options.PentMax > 0)
-                    {
-                        currentMonosaccharideSelection += "Pent(" + options.PentMin + "-" + options.PentMax + "), ";
-                        numbers.Add(pent);
-                    }
-
-                    if (options.KDNMax > 0)
-                    {
-                        currentMonosaccharideSelection += "KDN(" + options.KDNMin + "-" + options.KDNMax + "), ";
-                        numbers.Add(kdn);
-                    }
-
-                    if (options.Neu5AcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "Neu5Ac(" + options.Neu5AcMin + "-" + options.Neu5AcMax + "), ";
-                        numbers.Add(neuac);
-                    }
-
-                    if (options.Neu5GcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "Neu5Gc(" + options.Neu5GcMin + "-" + options.Neu5GcMax + "), ";
-                        numbers.Add(neugc);
-                    }
-
-                    if (options.PhosMax > 0)
-                    {
-                        currentMonosaccharideSelection += "Phos(" + options.PhosMin + "-" + options.PhosMax + "), ";
-                        numbers.Add(phos);
-                    }
-
-                    if (options.SulfMax > 0)
-                    {
-                        currentMonosaccharideSelection += "Sulf(" + options.SulfMin + "-" + options.SulfMax + "), ";
-                        numbers.Add(sulf);
-                    }
-
-                    if (options.lNeuAcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "lNeuAc(" + options.lNeuAcMin + "-" + options.lNeuAcMax + "), ";
-                        numbers.Add(lneuac);
-                    }
-
-                    if (options.eeNeuAcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "eeNeuAc(" + options.eeNeuAcMin + "-" + options.eeNeuAcMax + "), ";
-                        numbers.Add(eeneuac);
-                    }
-
-                    if (options.dNeuAcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "dNeuAc(" + options.dNeuAcMin + "-" + options.dNeuAcMax + "), ";
-                        numbers.Add(dneuac);
-                    }
-
-                    if (options.amNeuAcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "amNeuAc(" + options.amNeuAcMin + "-" + options.amNeuAcMax + "), ";
-                        numbers.Add(amneuac);
-                    }
-
-                    if (options.acetylMax > 0)
-                    {
-                        currentMonosaccharideSelection += "Acetyl(" + options.acetylMin + "-" + options.acetylMax + "), ";
-                        numbers.Add(acetyl);
-                    }
-
-                    if (options.lNeuGcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "lNeuGc(" + options.lNeuGcMin + "-" + options.lNeuGcMax + "), ";
-                        numbers.Add(lneugc);
-                    }
-
-                    if (options.eeNeuGcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "eeNeuGc(" + options.eeNeuGcMin + "-" + options.eeNeuGcMax + "), ";
-                        numbers.Add(eeneugc);
-                    }
-
-                    if (options.dNeuGcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "dNeuGc(" + options.dNeuGcMin + "-" + options.dNeuGcMax + "), ";
-                        numbers.Add(dneugc);
-                    }
-
-                    if (options.amNeuGcMax > 0)
-                    {
-                        currentMonosaccharideSelection += "amNeuGc(" + options.amNeuGcMin + "-" + options.amNeuGcMax + "), ";
-                        numbers.Add(amneugc);
-                    }
-
-                    if (options.customMono1Max > 0)
-                    {
-                        currentMonosaccharideSelection += options.customMono1Name + "(" + options.customMono1Min + "-" + options.customMono1Max + "), ";
-                        numbers.Add(options.customMono1Mass);
-                        monoCustom1 = true;
-                    }
-
-                    if (options.customMono2Max > 0)
-                    {
-                        currentMonosaccharideSelection += options.customMono2Name + "(" + options.customMono2Min + "-" + options.customMono2Max + "), ";
-                        numbers.Add(options.customMono2Mass);
-                        monoCustom2 = true;
-                    }
-
-                    if (options.customMono3Max > 0)
-                    {
-                        currentMonosaccharideSelection += options.customMono3Name + "(" + options.customMono3Min + "-" + options.customMono3Max + "), ";
-                        numbers.Add(options.customMono3Mass);
-                        monoCustom3 = true;
-                    }
-
-                    if (options.customMono4Max > 0)
-                    {
-                        currentMonosaccharideSelection += options.customMono4Name + "(" + options.customMono4Min + "-" + options.customMono4Max + "), ";
-                        numbers.Add(options.customMono4Mass);
-                        monoCustom4 = true;
-                    }
-
-                    if (options.customMono5Max > 0)
-                    {
-                        currentMonosaccharideSelection += options.customMono5Name + "(" + options.customMono5Min + "-" + options.customMono5Max + "), ";
-                        numbers.Add(options.customMono5Mass);
-                        monoCustom5 = true;
-                    }
+                    bool monoCustom1 = options.customMono1Max > 0;
+                    bool monoCustom2 = options.customMono2Max > 0;
+                    bool monoCustom3 = options.customMono3Max > 0;
+                    bool monoCustom4 = options.customMono4Max > 0;
+                    bool monoCustom5 = options.customMono5Max > 0;
 
 
                     // Process for multiple targets conditionally based on text box or mzml input
@@ -903,11 +543,13 @@ class Program
 
                     if (options.outputPath != null)
                     {
-                        if (mzmlFile == false) {
+                        if (mzmlFile == false)
+                        {
                             filePath1 = Path.Combine(
                                 options.outputPath + Path.GetFileNameWithoutExtension(options.file) + "_result" + ".csv");
                         }
-                        else {
+                        else
+                        {
                             filePath1 = Path.Combine(
                                 options.outputPath + Path.GetFileNameWithoutExtension(options.file) + "_SkylineImport.csv");
                         }
@@ -919,11 +561,13 @@ class Program
                         filePath = Path.Combine(
                             Path.GetDirectoryName(options.file),
                             Path.GetFileNameWithoutExtension(options.file));
-                        if (mzmlFile == false) {
+                        if (mzmlFile == false)
+                        {
                             filePath1 = Path.Combine(
                                 filePath + "_result" + ".csv");
                         }
-                        else {
+                        else
+                        {
                             filePath1 = Path.Combine(
                                 filePath + "_SkylineImport.csv");
                         }
@@ -935,7 +579,11 @@ class Program
                     targetStrings = new(
                     targetString.Split(new string[] { "\n" },
                     StringSplitOptions.RemoveEmptyEntries));
-                    targets = targetStrings.ConvertAll(decimal.Parse);
+                    targets = targetStrings
+                    .Select(s => s.Trim())
+                    .Where(s => !string.IsNullOrEmpty(s))
+                    .Select(decimal.Parse)
+                    .ToList();
 
                     // Adduct calculation
                     // This can result in huge combinatorial searches but it's there for the user as an option
@@ -1023,7 +671,6 @@ class Program
                             }
                         }
                         // Text input is singly charged m/z values that are observed via experiments like MALDI-MS of permethylated glycans so no modification of mass is needed.
-                        // TODO: Should this also include .dat?
                         if (fileExtension == ".txt" || fileExtension.ToLower() == ".dat")
                         {
                             // Subtracting H- from all targets and saving that as a new list
@@ -1250,86 +897,160 @@ class Program
                 }
                 finally
                 {
-                    solutionProcess = "";
                     targets.Clear();
                     numbers.Clear();
-                    solutions = "";
                 }
+            }
+
+            (ElementalFormula formula, decimal observed, decimal theoretical) ApplyReducingEnd(ElementalFormula monosaccharideFormula, decimal sum, decimal target)
+            {
+                ElementalFormula f = monosaccharideFormula;
+                decimal obs = observedMass;
+                decimal theo = theoreticalMass;
+
+                switch (options.derivatisation)
+                {
+                    case "native":
+                        switch (options.reducedEnd)
+                        {
+                            case "free": f.Hydrogen += 2; f.Oxygen += 1; obs = sum + 18.010565m; theo = target + 18.010565m; break;
+                            case "reduced": f.Hydrogen += 4; f.Oxygen += 1; obs = sum + 20.026195m; theo = target + 20.026195m; break;
+                            case "instantpc": f.Carbon += 14; f.Hydrogen += 21; f.Nitrogen += 3; f.Oxygen += 3; obs = sum + 18.010565m + 261.1477m; theo = target + 18.010565m + 261.1477m; break;
+                            case "rapifluor": f.Carbon += 17; f.Hydrogen += 23; f.Nitrogen += 5; f.Oxygen += 2; obs = sum + 18.010565m + 311.17461m; theo = target + 18.010565m + 311.17461m; break;
+                            case "2aa": f.Carbon += 7; f.Hydrogen += 9; f.Nitrogen += 1; f.Oxygen += 2; obs = sum + 18.010565m + 121.052774m; theo = target + 18.010565m + 121.052774m; break;
+                            case "2ab": f.Carbon += 7; f.Hydrogen += 10; f.Nitrogen += 2; f.Oxygen += 1; obs = sum + 18.010565m + 120.068758m; theo = target + 18.010565m + 120.068758m; break;
+                            case "procainamide": f.Carbon += 13; f.Hydrogen += 23; f.Nitrogen += 3; f.Oxygen += 1; obs = sum + 18.010565m + 219.1735574m; theo = target + 18.010565m + 219.1735574m; break;
+                            case "girard": f.Carbon += 7; f.Hydrogen += 10; f.Nitrogen += 3; f.Oxygen += 1; obs = sum + 18.010565m + 134.06405m; theo = target + 18.010565m + 134.06405m; break;
+                            case "custom": f.Carbon += options.customReducingCCount; f.Hydrogen += options.customReducingHCount; f.Nitrogen += options.customReducingNCount; f.Oxygen += options.customReducingOCount; obs = sum + 18.010565m + options.customReducingMass; theo = target + 18.010565m + options.customReducingMass; break;
+                        }
+                        break;
+
+                    case "permethylated":
+                        switch (options.reducedEnd)
+                        {
+                            case "free": f.Carbon += 2; f.Hydrogen += 6; f.Oxygen += 1; obs = sum + 18.010565m + 28.031300m; theo = target + 18.010565m + 28.031300m; break;
+                            case "reduced": f.Carbon += 3; f.Hydrogen += 10; f.Oxygen += 1; obs = sum + 20.026195m + 42.046950m; theo = target + 20.026195m + 42.046950m; break;
+                            case "custom": f.Carbon += options.customReducingCCount; f.Hydrogen += options.customReducingHCount; f.Nitrogen += options.customReducingNCount; f.Oxygen += options.customReducingOCount; obs = sum + 18.010565m + options.customReducingMass; theo = target + 18.010565m + options.customReducingMass; break;
+                        }
+                        break;
+
+                    case "peracetylated":
+                        switch (options.reducedEnd)
+                        {
+                            case "free": f.Carbon += 4; f.Hydrogen += 6; f.Oxygen += 3; obs = sum + 18.010565m + 84.021129m; theo = target + 18.010565m + 84.021129m; break;
+                            case "reduced": f.Carbon += 6; f.Hydrogen += 10; f.Oxygen += 4; obs = sum + 20.026195m + 126.031694m; theo = target + 20.026195m + 126.031694m; break;
+                            case "custom": f.Carbon += options.customReducingCCount; f.Hydrogen += options.customReducingHCount; f.Nitrogen += options.customReducingNCount; f.Oxygen += options.customReducingOCount; obs = sum + 18.010565m + options.customReducingMass; theo = target + 18.010565m + options.customReducingMass; break;
+                        }
+                        break;
+                }
+
+                return (f, obs, theo);
+            }
+
+            string LookUpGlyTouCanAccession(IReadOnlyDictionary<MonosaccharideDefinition, int> counts)
+            {
+                if (options.noGlyTouCan)
+                {
+                    return "";
+                }
+
+                var glyTouCanMappableKinds = new HashSet<string>
+                {
+                    "Hex", "HexNAc", "dHex", "HexA", "HexN", "Pent", "KDN",
+                    "Neu5Ac", "Neu5Gc", "dHexNAc", "Phos", "Sulf", "Acetyl"
+                };
+
+                bool hasUnmappedComposition = counts.Any(kvp =>
+                    kvp.Value > 0 && !glyTouCanMappableKinds.Contains(kvp.Key.Kind));
+
+                if (hasUnmappedComposition)
+                {
+                    return "";
+                }
+
+                int CountOf(string kind) => counts
+                    .Where(kvp => kvp.Key.Kind == kind)
+                    .Sum(kvp => kvp.Value);
+
+                return GlyTouCanBaseCompositionLookup.FindAccession(
+                    CountOf("Hex"), CountOf("HexNAc"), CountOf("dHex"), CountOf("HexA"),
+                    CountOf("HexN"), CountOf("Pent"), CountOf("KDN"), CountOf("Neu5Ac"),
+                    CountOf("Neu5Gc"), CountOf("dHexNAc"), CountOf("Phos"), CountOf("Sulf"),
+                    CountOf("Acetyl"));
             }
 
             void glyComboProcess()
             {
                 iterations = 0;
-                Sum_up(numbers, targets, options);
-                solutions = "";
-                // Pop-up to let the user know the search has finished
-                Console.WriteLine("GlyCombo has finished running." + Environment.NewLine + ((solutionMultiples.Length - solutionMultiples.Replace(Environment.NewLine, string.Empty).Length) / 2) + " monosaccharide combinations identified over " + iterations + " iterations." + Environment.NewLine);
-                solutionProcess = "";
+                Sum_up(catalog, targets, options);
+                Console.WriteLine("GlyComboCLI has finished running." + Environment.NewLine + results.Count + " monosaccharide combinations identified over " + iterations + " iterations." + Environment.NewLine);
             }
 
             // Process to match glycan compositions by sum_up_recursive
-            void Sum_up(List<decimal> numbers, List<decimal> targets, CommandOptions options)
+            void Sum_up(List<MonosaccharideDefinition> catalog, List<decimal> targets, CommandOptions options)
             {
-                // let the user know the search is running
                 Console.WriteLine("Search started.");
                 Console.WriteLine("Processing " + targets.Count + " precursors.");
 
-                // For each target in the list
-                for (int i = 0; i < targets.Count; i++)
-                {
-                    // Updates the progress, every 20% of targets
-                    int currentPercentage = (int)Math.Floor((double)i / targets.Count * 100);
-                    int currentStep = currentPercentage / 20;
-                    int previousStep = (int)Math.Floor((double)(i - 1) / targets.Count * 100 / 20);
-                    if (currentStep != previousStep && currentPercentage < 100)
+                CompositionSearch.SumUp(
+                    catalog,
+                    targets,
+                    options.massError,
+                    options.massErrorType,
+                    onResultFound: (raw, targetIndex) =>
                     {
-                        Console.WriteLine(DateTime.Now + " Progress: " + currentPercentage + "%");
-                    }
-                    bool targetFound = false;
-                    // Define the upper and lower error tolerances for search
-                    if (options.massErrorType == "da")
-                    {
-                        targetLow = targets[i] - options.massError;
-                        targetHigh = targets[i] + options.massError;
-                    }
-                    else if (options.massErrorType == "ppm")
-                    {
-                        targetLow = targets[i] - (targets[i] * (options.massError / 1000000));
-                        targetHigh = targets[i] + (targets[i] * (options.massError / 1000000));
-                    }
-                    decimal target = targets[i];
-                    Sum_up_recursive(numbers, target, [], targetFound, i, options);
-                };
+                        var (formula, obs, theo) = ApplyReducingEnd(raw.Formula, raw.ObservedMass, raw.TheoreticalMass);
 
-                // Write processed data to csv file
-                string solutionHeader = "";
-                string skylineSolutionHeader = "";
-                string skylineSolutionMultiplesPreTrim = "";
-                string skylineSolutionMultiples = "";
-                string fileExtension = Path.GetExtension(options.file);
-                if (mzmlFile == true)
+                        if (!CompositionSearch.AllCountsInBounds(raw.Counts, catalog))
+                        {
+                            return;
+                        }
+
+                        string accession = LookUpGlyTouCanAccession(raw.Counts);
+
+                        Ms2ScanRecord? ms2 = null;
+                        if (mzmlFile)
+                        {
+                            int index = (int)targetIndex % scans.Count;
+                            ms2 = new Ms2ScanRecord
+                            {
+                                ScanNumber = scans.ElementAt(index).ToString(),
+                                Charge = charges.ElementAt(index),
+                                RetentionTimeMinutes = retentionTimes.ElementAt(index),
+                                TotalIonCurrent = TICs.ElementAt(index),
+                                FileName = files.ElementAt(index),
+                            };
+                        }
+
+                        results.Add(new CompositionResult(
+                            raw.Counts, theo, obs, obs - theo, formula, accession, ms2, options.derivatisation));
+                    },
+                    iterations: ref iterations);
+
+                string separator = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator;
+                bool includeGlyTouCan = !options.noGlyTouCan;
+                string glyTouCanHeader = includeGlyTouCan ? separator + "GlyTouCan Base Composition" : "";
+
+                if (mzmlFile)
                 {
-                    solutionHeader = "Composition,Observed mass,Theoretical mass,Molecular Formula,Mass error,Scan number,Precursor Charge,Retention Time,TIC,File Name";
-                    skylineSolutionHeader = "Molecule List Name,Molecule Name,Observed mass,Theoretical mass,Molecular Formula,Mass error,Scan number,Precursor Charge,Retention Time,TIC,Molecule Note";
-                    // Process the SolutionMultiples string in a way that generates an output compatible with Skyline with no user intervention
-                    skylineSolutionMultiplesPreTrim = (solutionMultiples.Insert(0, Environment.NewLine)).Replace(Environment.NewLine, Environment.NewLine + "GlyCombo,");
-                    skylineSolutionMultiples = skylineSolutionMultiplesPreTrim.Substring(0, skylineSolutionMultiplesPreTrim.Length - 10);
-                    File.WriteAllText(filePath1, skylineSolutionHeader + skylineSolutionMultiples);
+                    string header = "Molecule List Name" + separator + "Molecule Name" + separator + "Observed mass" + separator + "Theoretical mass" + separator + "Molecular Formula" + separator + "Mass error" + separator + "Scan number" + separator + "Precursor Charge" + separator + "Retention Time" + separator + "TIC" + separator + "Molecule Note" + glyTouCanHeader;
+                    string body = string.Join(Environment.NewLine, results.Select(r => r.ToSkylineCsvRow(separator, includeGlyTouCan)));
+                    File.WriteAllText(filePath1, header + Environment.NewLine + body);
                 }
                 else
                 {
-                    solutionHeader = "Composition,Observed mass,Theoretical mass,ChemicalFormula,Mass error";
-                    File.WriteAllText(filePath1, solutionHeader + Environment.NewLine + solutionMultiples);
+                    string header = "Composition" + separator + "Observed mass" + separator + "Theoretical mass" + separator + "ChemicalFormula" + separator + "Mass error" + glyTouCanHeader;
+                    string body = string.Join(Environment.NewLine, results.Select(r => r.ToPlainCsvRow(separator, includeGlyTouCan)));
+                    File.WriteAllText(filePath1, header + Environment.NewLine + body);
                 }
 
                 Console.WriteLine("File processing complete. Output written to: " + filePath1);
 
-                // Converting precursor list to series of strings for subsequent confirmation
-                string combinedTargets = string.Join(Environment.NewLine, targets.ToArray());
-                string submitOutput = Environment.NewLine + "GlyCombo search output" + Environment.NewLine;
+                string submitOutput = "GlyComboCLI (v1.1) search output" + Environment.NewLine;
+                submitOutput += "<Input file> " + Path.GetFileName(options.file) + Environment.NewLine;
                 submitOutput += "<Error tolerance> " + options.massError + "," + options.massErrorType + Environment.NewLine;
                 submitOutput += "<Reducing end> " + options.reducedEnd + Environment.NewLine;
-                if (options.reducedEnd.ToString() == "Custom")
+                if (options.reducedEnd.ToString() == "custom")
                 {
                     submitOutput += "Custom reducing end: Name, Mass, #C, #H, #N, #O";
                     submitOutput += "<Custom reducing end> " + options.customReducingName + "," + options.customReducedMassOutput + "," + options.customReducingCCount + "," + options.customReducingHCount + "," + options.customReducingOCount + "," + options.customReducingNCount;
@@ -1339,6 +1060,7 @@ class Program
                 {
                     submitOutput += "<OffByOne enabled> " + Environment.NewLine;
                 }
+                submitOutput += "<GlyTouCan base-composition annotation> " + (options.noGlyTouCan ? "Disabled" : "Enabled") + Environment.NewLine;
                 submitOutput += "## Monosaccharides: Monosaccharide1(Min-Max), Monosaccharide2(Min-Max)" + Environment.NewLine;
                 submitOutput += currentMonosaccharideSelection + Environment.NewLine;
                 if (options.customMono1Max > 0 || options.customMono2Max > 0 || options.customMono3Max > 0 || options.customMono4Max > 0 || options.customMono5Max > 0)
@@ -1371,7 +1093,36 @@ class Program
 
                 }
                 submitOutput += "## Adducts: Adduct1, Adduct2" + Environment.NewLine;
-                submitOutput += options.adducts + Environment.NewLine;
+                if (!string.IsNullOrWhiteSpace(options.adducts))
+                {
+                    submitOutput += options.adducts + Environment.NewLine;
+                }
+                else if (mzmlFile)
+                {
+                    bool positiveMode = charges.Any(c => c > 0);
+                    bool negativeMode = charges.Any(c => c < 0);
+
+                    if (positiveMode && negativeMode)
+                    {
+                        submitOutput += "M+xH, M-xH (inferred from mzML polarity)" + Environment.NewLine;
+                    }
+                    else if (positiveMode)
+                    {
+                        submitOutput += "M+xH (inferred from mzML positive polarity)" + Environment.NewLine;
+                    }
+                    else if (negativeMode)
+                    {
+                        submitOutput += "M-xH (inferred from mzML negative polarity)" + Environment.NewLine;
+                    }
+                    else
+                    {
+                        submitOutput += "None" + Environment.NewLine;
+                    }
+                }
+                else
+                {
+                    submitOutput += "None" + Environment.NewLine;
+                }
                 File.WriteAllText(
                     filePath2,
                     submitOutput
@@ -1382,895 +1133,12 @@ class Program
                 );
                 Console.WriteLine(submitOutput);
 
-            }
+                stopwatch.Stop();
 
-            void Sum_up_recursive(List<decimal> numbers, decimal target, List<decimal> partial, bool targetFound, int i, CommandOptions options)
-            {
-                decimal s = 0;
-                solutionProcess = "";
-                solutions = "";
-
-                // Count the number of times we have done this calculation and add more sugars to a given composition
-                iterations += 1;
-                foreach (decimal x in partial) s += x;
-
-                // Once s is between the required mass range, write a line into solutions that contains all identified compositions
-                if (s >= targetLow && s <= targetHigh)
-                {
-                    // Combines each of the solutions for the given mass
-                    solutions = string.Join("", partial.ToArray());
-
-                    // This replaces repeated monosaccharide names with 1 monosaccharide name and the number of the occurences
-                    string solutionsUpdate = "";
-                    int chemicalFormulaeC = 0;
-                    int chemicalFormulaeH = 0;
-                    int chemicalFormulaeO = 0;
-                    int chemicalFormulaeN = 0;
-                    int chemicalFormulaeP = 0;
-                    int chemicalFormulaeS = 0;
-                    int dHexCount = 0;
-                    int HexACount = 0;
-                    int HexNCount = 0;
-                    int PentCount = 0;
-                    int KDNCount = 0;
-                    int hexCount = 0;
-                    int neuAcCount = 0;
-                    int neuGcCount = 0;
-                    int hexNAcCount = 0;
-                    int hexNhexNAcCount = 0;
-                    int phosCount = 0;
-                    int sulfCount = 0;
-                    int dhexnacCount = 0;
-                    int lNeuAcCount = 0;
-                    int eeNeuAcCount = 0;
-                    int dNeuAcCount = 0;
-                    int amNeuAcCount = 0;
-                    int acetylCount = 0;
-                    int lNeuGcCount = 0;
-                    int eeNeuGcCount = 0;
-                    int dNeuGcCount = 0;
-                    int amNeuGcCount = 0;
-
-                    // This replaces all the masses with their respective monosaccharide identities
-                    switch (options.derivatisation)
-                    {
-                        case "native":
-                            solutions = solutions.Replace("146.057908", "dHex ").Replace("162.052823", "Hex ").Replace("291.095416", "Neu5Ac ").Replace("307.090331", "Neu5Gc ").Replace("203.079372", "HexNAc ").Replace("79.966331", "Phos ").Replace("79.956815", "Sulf ").Replace(",", "").Replace("161.068808", "HexN ").Replace("176.032088", "HexA ").Replace("187.084458", "dHexNAc ").Replace("132.042258", "Pent ").Replace("250.068867", "KDN ").Replace("273.0848518", "lneuac ").Replace("319.1267166", "eeneuac ").Replace("318.1427011", "dneuac ").Replace("290.1114009", "amneuac ").Replace("42.010565", "acetyl ").Replace("289.0797664", "lneugc ").Replace("335.1216313", "eeneugc ").Replace("306.1063155", "dneugc ").Replace("334.1376157", "amneugc ").Replace(options.customMono1Mass.ToString(), options.customMono1Name + " ").Replace(options.customMono2Mass.ToString(), options.customMono2Name + " ").Replace(options.customMono3Mass.ToString(), options.customMono3Name + " ").Replace(options.customMono4Mass.ToString(), options.customMono4Name + " ").Replace(options.customMono5Mass.ToString(), options.customMono5Name + " ");
-
-                            // Chemical formulae for native
-                            dHexCount = Regex.Matches(solutions, "dHex ").Count;
-                            if (dHexCount > 0)
-                            {
-                                chemicalFormulaeC += (dHexCount * 6);
-                                chemicalFormulaeH += (dHexCount * 10);
-                                chemicalFormulaeO += (dHexCount * 4);
-                                solutionsUpdate = solutionsUpdate + "(dHex)" + Convert.ToString(dHexCount) + " ";
-                            }
-                            HexACount = Regex.Matches(solutions, "HexA ").Count;
-                            if (HexACount > 0)
-                            {
-                                chemicalFormulaeC += (HexACount * 6);
-                                chemicalFormulaeH += (HexACount * 8);
-                                chemicalFormulaeO += (HexACount * 6);
-                                solutionsUpdate = solutionsUpdate + "(HexA)" + Convert.ToString(HexACount) + " ";
-                            }
-                            HexNCount = Regex.Matches(solutions, "HexN ").Count;
-                            if (HexNCount > 0)
-                            {
-                                chemicalFormulaeC += (HexNCount * 6);
-                                chemicalFormulaeH += (HexNCount * 11);
-                                chemicalFormulaeO += (HexNCount * 4);
-                                chemicalFormulaeN += (HexNCount);
-                                solutionsUpdate = solutionsUpdate + "(HexN)" + Convert.ToString(HexNCount) + " ";
-                            }
-                            PentCount = Regex.Matches(solutions, "Pent ").Count;
-                            if (PentCount > 0)
-                            {
-                                chemicalFormulaeC += (PentCount * 5);
-                                chemicalFormulaeH += (PentCount * 8);
-                                chemicalFormulaeO += (PentCount * 4);
-                                solutionsUpdate = solutionsUpdate + "(Pent)" + Convert.ToString(PentCount) + " ";
-                            }
-                            KDNCount = Regex.Matches(solutions, "KDN ").Count;
-                            if (KDNCount > 0)
-                            {
-                                chemicalFormulaeC += (KDNCount * 9);
-                                chemicalFormulaeH += (KDNCount * 14);
-                                chemicalFormulaeO += (KDNCount * 8);
-                                solutionsUpdate = solutionsUpdate + "(KDN)" + Convert.ToString(KDNCount) + " ";
-                            }
-                            hexCount = Regex.Matches(solutions, "Hex ").Count - Regex.Matches(solutions, "dHex ").Count;
-                            if (hexCount > 0)
-                            {
-                                chemicalFormulaeC += (hexCount * 6);
-                                chemicalFormulaeH += (hexCount * 10);
-                                chemicalFormulaeO += (hexCount * 5);
-                                solutionsUpdate = solutionsUpdate + "(Hex)" + Convert.ToString(hexCount) + " ";
-                            }
-                            neuAcCount = Regex.Matches(solutions, "Neu5Ac ").Count;
-                            if (neuAcCount > 0)
-                            {
-                                chemicalFormulaeC += (neuAcCount * 11);
-                                chemicalFormulaeH += (neuAcCount * 17);
-                                chemicalFormulaeN += (neuAcCount);
-                                chemicalFormulaeO += (neuAcCount * 8);
-                                solutionsUpdate = solutionsUpdate + "(NeuAc)" + Convert.ToString(neuAcCount) + " ";
-                            }
-                            neuGcCount = Regex.Matches(solutions, "Neu5Gc ").Count;
-                            if (neuGcCount > 0)
-                            {
-                                chemicalFormulaeC += (neuGcCount * 11);
-                                chemicalFormulaeH += (neuGcCount * 17);
-                                chemicalFormulaeN += (neuGcCount);
-                                chemicalFormulaeO += (neuGcCount * 9);
-                                solutionsUpdate = solutionsUpdate + "(NeuGc)" + Convert.ToString(neuGcCount) + " ";
-                            }
-                            hexNAcCount = Regex.Matches(solutions, "HexNAc ").Count - Regex.Matches(solutions, "dHexNAc ").Count;
-                            if (hexNAcCount > 0)
-                            {
-                                chemicalFormulaeC += (hexNAcCount * 8);
-                                chemicalFormulaeH += (hexNAcCount * 13);
-                                chemicalFormulaeN += (hexNAcCount);
-                                chemicalFormulaeO += (hexNAcCount * 5);
-                                solutionsUpdate = solutionsUpdate + "(HexNAc)" + Convert.ToString(hexNAcCount) + " ";
-                            }
-                            phosCount = Regex.Matches(solutions, "Phos ").Count;
-                            if (phosCount > 0)
-                            {
-                                chemicalFormulaeH += (phosCount);
-                                chemicalFormulaeO += (phosCount * 3);
-                                chemicalFormulaeP += (phosCount);
-                                solutionsUpdate = solutionsUpdate + "(Phos)" + Convert.ToString(phosCount) + " ";
-                            }
-                            sulfCount = Regex.Matches(solutions, "Sulf ").Count;
-                            if (sulfCount > 0)
-                            {
-                                chemicalFormulaeO += (sulfCount * 3);
-                                chemicalFormulaeS += (sulfCount);
-                                solutionsUpdate = solutionsUpdate + "(Sulf)" + Convert.ToString(sulfCount) + " ";
-                            }
-                            dhexnacCount = Regex.Matches(solutions, "dHexNAc ").Count;
-                            if (dhexnacCount > 0)
-                            {
-                                chemicalFormulaeC += (dhexnacCount * 8);
-                                chemicalFormulaeH += (dhexnacCount * 13);
-                                chemicalFormulaeN += (dhexnacCount);
-                                chemicalFormulaeO += (dhexnacCount * 4);
-                                solutionsUpdate = solutionsUpdate + "(dHexNAc)" + Convert.ToString(dhexnacCount) + " ";
-                            }
-                            lNeuAcCount = Regex.Matches(solutions, "lneuac ").Count;
-                            if (lNeuAcCount > 0)
-                            {
-                                chemicalFormulaeC += (lNeuAcCount * 11);
-                                chemicalFormulaeH += (lNeuAcCount * 15);
-                                chemicalFormulaeN += (lNeuAcCount);
-                                chemicalFormulaeO += (lNeuAcCount * 7);
-                                solutionsUpdate = solutionsUpdate + "(lNeuAc)" + Convert.ToString(lNeuAcCount) + " ";
-                            }
-                            eeNeuAcCount = Regex.Matches(solutions, "eeneuac ").Count;
-                            if (eeNeuAcCount > 0)
-                            {
-                                chemicalFormulaeC += (eeNeuAcCount * 13);
-                                chemicalFormulaeH += (eeNeuAcCount * 21);
-                                chemicalFormulaeN += (eeNeuAcCount);
-                                chemicalFormulaeO += (eeNeuAcCount * 8);
-                                solutionsUpdate = solutionsUpdate + "(eNeuAc)" + Convert.ToString(eeNeuAcCount) + " ";
-                            }
-                            dNeuAcCount = Regex.Matches(solutions, "dneuac ").Count;
-                            if (dNeuAcCount > 0)
-                            {
-                                chemicalFormulaeC += (dNeuAcCount * 13);
-                                chemicalFormulaeH += (dNeuAcCount * 22);
-                                chemicalFormulaeN += (dNeuAcCount * 2);
-                                chemicalFormulaeO += (dNeuAcCount * 7);
-                                solutionsUpdate = solutionsUpdate + "(dNeuAc)" + Convert.ToString(dNeuAcCount) + " ";
-                            }
-                            amNeuAcCount = Regex.Matches(solutions, "amneuac ").Count;
-                            if (amNeuAcCount > 0)
-                            {
-                                chemicalFormulaeC += (amNeuAcCount * 11);
-                                chemicalFormulaeH += (amNeuAcCount * 18);
-                                chemicalFormulaeN += (amNeuAcCount * 2);
-                                chemicalFormulaeO += (amNeuAcCount * 7);
-                                solutionsUpdate = solutionsUpdate + "(amNeuAc)" + Convert.ToString(amNeuAcCount) + " ";
-                            }
-                            acetylCount = Regex.Matches(solutions, "acetyl ").Count;
-                            if (acetylCount > 0)
-                            {
-                                chemicalFormulaeC += (acetylCount * 2);
-                                chemicalFormulaeH += (acetylCount * 2);
-                                chemicalFormulaeO += (acetylCount * 1);
-                                solutionsUpdate = solutionsUpdate + "(Acetyl)" + Convert.ToString(acetylCount) + " ";
-                            }
-                            lNeuGcCount = Regex.Matches(solutions, "lneugc ").Count;
-                            if (lNeuGcCount > 0)
-                            {
-                                chemicalFormulaeC += (lNeuGcCount * 11);
-                                chemicalFormulaeH += (lNeuGcCount * 15);
-                                chemicalFormulaeN += (lNeuGcCount);
-                                chemicalFormulaeO += (lNeuGcCount * 8);
-                                solutionsUpdate = solutionsUpdate + "(lNeuGc)" + Convert.ToString(lNeuGcCount) + " ";
-                            }
-                            eeNeuGcCount = Regex.Matches(solutions, "eeneugc ").Count;
-                            if (eeNeuGcCount > 0)
-                            {
-                                chemicalFormulaeC += (eeNeuGcCount * 13);
-                                chemicalFormulaeH += (eeNeuGcCount * 21);
-                                chemicalFormulaeN += (eeNeuGcCount);
-                                chemicalFormulaeO += (eeNeuGcCount * 9);
-                                solutionsUpdate = solutionsUpdate + "(eNeuGc)" + Convert.ToString(eeNeuGcCount) + " ";
-                            }
-                            dNeuGcCount = Regex.Matches(solutions, "dneugc ").Count;
-                            if (dNeuGcCount > 0)
-                            {
-                                chemicalFormulaeC += (dNeuGcCount * 13);
-                                chemicalFormulaeH += (dNeuGcCount * 22);
-                                chemicalFormulaeN += (dNeuGcCount * 2);
-                                chemicalFormulaeO += (dNeuGcCount * 8);
-                                solutionsUpdate = solutionsUpdate + "(dNeuGc)" + Convert.ToString(dNeuGcCount) + " ";
-                            }
-                            amNeuGcCount = Regex.Matches(solutions, "amneugc ").Count;
-                            if (amNeuGcCount > 0)
-                            {
-                                chemicalFormulaeC += (amNeuGcCount * 11);
-                                chemicalFormulaeH += (amNeuGcCount * 18);
-                                chemicalFormulaeN += (amNeuGcCount * 2);
-                                chemicalFormulaeO += (amNeuGcCount * 8);
-                                solutionsUpdate = solutionsUpdate + "(amNeuGc)" + Convert.ToString(amNeuGcCount) + " ";
-                            }
-
-                            switch (options.reducedEnd)
-                            {
-                                case "free":
-                                    chemicalFormulaeH += 2;
-                                    chemicalFormulaeO += 1;
-                                    break;
-                                case "reduced":
-                                    chemicalFormulaeH += 4;
-                                    chemicalFormulaeO += 1;
-                                    break;
-                                case "instantpc":
-                                    chemicalFormulaeC += 14;
-                                    chemicalFormulaeH += 21;
-                                    chemicalFormulaeN += 3;
-                                    chemicalFormulaeO += 3;
-                                    break;
-                                case "rapifluor":
-                                    chemicalFormulaeC += 17;
-                                    chemicalFormulaeH += 23;
-                                    chemicalFormulaeN += 5;
-                                    chemicalFormulaeO += 2;
-                                    break;
-                                case "2aa":
-                                    chemicalFormulaeC += 7;
-                                    chemicalFormulaeH += 9;
-                                    chemicalFormulaeN += 1;
-                                    chemicalFormulaeO += 2;
-                                    break;
-                                case "2ab":
-                                    chemicalFormulaeC += 7;
-                                    chemicalFormulaeH += 10;
-                                    chemicalFormulaeN += 2;
-                                    chemicalFormulaeO += 1;
-                                    break;
-                                case "procainamide":
-                                    chemicalFormulaeC += 13;
-                                    chemicalFormulaeH += 23;
-                                    chemicalFormulaeN += 3;
-                                    chemicalFormulaeO += 1;
-                                    break;
-                                case "girard":
-                                    chemicalFormulaeC += 7;
-                                    chemicalFormulaeH += 10;
-                                    chemicalFormulaeN += 3;
-                                    chemicalFormulaeO += 1;
-                                    break;
-                                case "custom":
-                                    chemicalFormulaeC += options.customReducingCCount;
-                                    chemicalFormulaeH += options.customReducingHCount;
-                                    chemicalFormulaeN += options.customReducingNCount;
-                                    chemicalFormulaeO += options.customReducingOCount;
-                                    break;
-                                default:
-                                    break;
-                            }
-                            switch (options.reducedEnd)
-                            {
-                                case "free":
-                                    observedMass = s + 18.010565m;
-                                    theoreticalMass = target + 18.010565m;
-                                    break;
-                                case "reduced":
-                                    observedMass = s + 20.026195m;
-                                    theoreticalMass = target + 20.026195m;
-                                    break;
-                                case "instantpc":
-                                    observedMass = s + 18.010565m + 261.1477m;
-                                    theoreticalMass = target + 18.010565m + 261.1477m;
-                                    break;
-                                case "rapifluor":
-                                    observedMass = s + 18.010565m + 311.17461m;
-                                    theoreticalMass = target + 18.010565m + 311.17461m;
-                                    break;
-                                case "2aa":
-                                    observedMass = s + 18.010565m + 121.052774m;
-                                    theoreticalMass = target + 18.010565m + 121.052774m;
-                                    break;
-                                case "2ab":
-                                    observedMass = s + 18.010565m + 120.068758m;
-                                    theoreticalMass = target + 18.010565m + 120.068758m;
-                                    break;
-                                case "procainamide":
-                                    observedMass = s + 18.010565m + 219.1735574m;
-                                    theoreticalMass = target + 18.010565m + 219.1735574m;
-                                    break;
-                                case "girard":
-                                    observedMass = s + 18.010565m + 134.06405m;
-                                    theoreticalMass = target + 18.010565m + 134.06405m;
-                                    break;
-                                case "custom":
-                                    observedMass = s + 18.010565m + options.customReducingMass;
-                                    theoreticalMass = target + 18.010565m + options.customReducingMass;
-                                    break;
-                                default:
-                                    break;
-                            }
-                            break;
-
-                        case "permethylated":
-                            solutions = solutions.Replace("174.089210", "dHex ").Replace("204.099775", "Hex ").Replace("361.173669", "Neu5Ac ").Replace("391.184234", "Neu5Gc ").Replace("245.126324", "HexNAc ").Replace("93.981980", "Phos ").Replace("65.941165", "Sulf ").Replace(",", "").Replace("203.115758", "HexN ").Replace("218.079040", "HexA ").Replace("215.115759", "dHexNAc ").Replace("160.073560", "Pent ").Replace("320.147120", "KDN ").Replace(options.customMono1Mass.ToString(), options.customMono1Name + " ").Replace(options.customMono2Mass.ToString(), options.customMono2Name + " ").Replace(options.customMono3Mass.ToString(), options.customMono3Name + " ").Replace(options.customMono4Mass.ToString(), options.customMono4Name + " ").Replace(options.customMono5Mass.ToString(), options.customMono5Name + " ");
-
-                            // Chemical formulae for permethylated
-                            dHexCount = Regex.Matches(solutions, "dHex ").Count;
-                            if (dHexCount > 0)
-                            {
-                                chemicalFormulaeC += (dHexCount * 8);
-                                chemicalFormulaeH += (dHexCount * 14);
-                                chemicalFormulaeO += (dHexCount * 4);
-                                solutionsUpdate = solutionsUpdate + "(dHex)" + Convert.ToString(dHexCount) + " ";
-                            }
-                            HexACount = Regex.Matches(solutions, "HexA ").Count;
-                            if (HexACount > 0)
-                            {
-                                chemicalFormulaeC += (HexACount * 9);
-                                chemicalFormulaeH += (HexACount * 14);
-                                chemicalFormulaeO += (HexACount * 6);
-                                solutionsUpdate = solutionsUpdate + "(HexA)" + Convert.ToString(HexACount) + " ";
-                            }
-                            HexNCount = Regex.Matches(solutions, "HexN ").Count;
-                            if (HexNCount > 0)
-                            {
-                                chemicalFormulaeC += (HexNCount * 9);
-                                chemicalFormulaeH += (HexNCount * 17);
-                                chemicalFormulaeO += (HexNCount * 4);
-                                chemicalFormulaeN += (HexNCount);
-                                solutionsUpdate = solutionsUpdate + "(HexN)" + Convert.ToString(HexNCount) + " ";
-                            }
-                            PentCount = Regex.Matches(solutions, "Pent ").Count;
-                            if (PentCount > 0)
-                            {
-                                chemicalFormulaeC += (PentCount * 7);
-                                chemicalFormulaeH += (PentCount * 12);
-                                chemicalFormulaeO += (PentCount * 4);
-                                solutionsUpdate = solutionsUpdate + "(Pent)" + Convert.ToString(PentCount) + " ";
-                            }
-                            KDNCount = Regex.Matches(solutions, "KDN ").Count;
-                            if (KDNCount > 0)
-                            {
-                                chemicalFormulaeC += (KDNCount * 14);
-                                chemicalFormulaeH += (KDNCount * 24);
-                                chemicalFormulaeO += (KDNCount * 8);
-                                solutionsUpdate = solutionsUpdate + "(KDN)" + Convert.ToString(KDNCount) + " ";
-                            }
-                            hexCount = Regex.Matches(solutions, "Hex ").Count - Regex.Matches(solutions, "dHex ").Count;
-                            if (hexCount > 0)
-                            {
-                                chemicalFormulaeC += (hexCount * 9);
-                                chemicalFormulaeH += (hexCount * 16);
-                                chemicalFormulaeO += (hexCount * 5);
-                                solutionsUpdate = solutionsUpdate + "(Hex)" + Convert.ToString(hexCount) + " ";
-                            }
-                            neuAcCount = Regex.Matches(solutions, "Neu5Ac ").Count;
-                            if (neuAcCount > 0)
-                            {
-                                chemicalFormulaeC += (neuAcCount * 16);
-                                chemicalFormulaeH += (neuAcCount * 27);
-                                chemicalFormulaeN += (neuAcCount);
-                                chemicalFormulaeO += (neuAcCount * 8);
-                                solutionsUpdate = solutionsUpdate + "(NeuAc)" + Convert.ToString(neuAcCount) + " ";
-                            }
-                            neuGcCount = Regex.Matches(solutions, "Neu5Gc ").Count;
-                            if (neuGcCount > 0)
-                            {
-                                chemicalFormulaeC += (neuGcCount * 17);
-                                chemicalFormulaeH += (neuGcCount * 29);
-                                chemicalFormulaeN += (neuGcCount);
-                                chemicalFormulaeO += (neuGcCount * 9);
-                                solutionsUpdate = solutionsUpdate + "(NeuGc)" + Convert.ToString(neuGcCount) + " ";
-                            }
-                            hexNAcCount = Regex.Matches(solutions, "HexNAc ").Count - Regex.Matches(solutions, "dHexNAc ").Count;
-                            if (hexNAcCount > 0)
-                            {
-                                chemicalFormulaeC += (hexNAcCount * 11);
-                                chemicalFormulaeH += (hexNAcCount * 19);
-                                chemicalFormulaeN += (hexNAcCount);
-                                chemicalFormulaeO += (hexNAcCount * 5);
-                                solutionsUpdate = solutionsUpdate + "(HexNAc)" + Convert.ToString(hexNAcCount) + " ";
-                            }
-                            phosCount = Regex.Matches(solutions, "Phos ").Count;
-                            if (phosCount > 0)
-                            {
-                                chemicalFormulaeC += (phosCount);
-                                chemicalFormulaeH += (phosCount * 3);
-                                chemicalFormulaeO += (phosCount * 3);
-                                chemicalFormulaeP += (phosCount);
-                                solutionsUpdate = solutionsUpdate + "(Phos)" + Convert.ToString(phosCount) + " ";
-                            }
-                            dhexnacCount = Regex.Matches(solutions, "dHexNAc ").Count;
-                            if (dhexnacCount > 0)
-                            {
-                                chemicalFormulaeC += (dhexnacCount * 10);
-                                chemicalFormulaeH += (dhexnacCount * 17);
-                                chemicalFormulaeN += (dhexnacCount);
-                                chemicalFormulaeO += (dhexnacCount * 4);
-                                solutionsUpdate = solutionsUpdate + "(dHexNAc)" + Convert.ToString(dhexnacCount) + " ";
-                            }
-                            sulfCount = Regex.Matches(solutions, "Sulf ").Count;
-                            if (sulfCount > 0)
-                            {
-                                chemicalFormulaeC += (sulfCount * -1);
-                                chemicalFormulaeH += (sulfCount * -2);
-                                chemicalFormulaeO += (sulfCount * 3);
-                                chemicalFormulaeS += (sulfCount);
-                                solutionsUpdate = solutionsUpdate + "(Sulf)" + Convert.ToString(sulfCount) + " ";
-                            }
-                            switch (reducedEnd)
-                            {
-                                case "free":
-                                    chemicalFormulaeC += 2;
-                                    chemicalFormulaeH += 6;
-                                    chemicalFormulaeO += 1;
-                                    break;
-                                case "reduced":
-                                    chemicalFormulaeC += 3;
-                                    chemicalFormulaeH += 10;
-                                    chemicalFormulaeO += 1;
-                                    break;
-                                case "custom":
-                                    chemicalFormulaeC += options.customReducingCCount;
-                                    chemicalFormulaeH += options.customReducingHCount;
-                                    chemicalFormulaeN += options.customReducingNCount;
-                                    chemicalFormulaeO += options.customReducingOCount;
-                                    break;
-                                default:
-                                    break;
-                            }
-                            // Permethylated
-                            switch (reducedEnd)
-                            {
-                                case "free":
-                                    observedMass = s + 18.010565m + 28.031300m;
-                                    theoreticalMass = target + 18.010565m + 28.031300m;
-                                    break;
-                                case "reduced":
-                                    observedMass = s + 20.026195m + 42.046950m;
-                                    theoreticalMass = target + 20.026195m + 42.046950m;
-                                    break;
-                                case "custom":
-                                    observedMass = s + 18.010565m + options.customReducingMass;
-                                    theoreticalMass = target + 18.010565m + options.customReducingMass;
-                                    break;
-                                default:
-                                    break;
-                            }
-                            break;
-
-                        case "peracetylated":
-                            if (options.HexNAcMax > 0 && options.HexNMax > 0){
-                                solutions = solutions.Replace("230.079038", "dHex ").Replace("288.084517", "Hex ").Replace("417.127110", "Neu5Ac ").Replace("475.132593", "Neu5Gc ").Replace("287.100501", "HexNAc/HexN ").Replace("37.955765", "Phos ").Replace("37.946250", "Sulf ").Replace(",", "").Replace("260.053217", "HexA ").Replace("247.105587", "dHexNAc ").Replace("216.063388", "Pent ").Replace("376.100561", "KDN ").Replace(options.customMono1Mass.ToString(), options.customMono1Name + " ").Replace(options.customMono2Mass.ToString(), options.customMono2Name + " ").Replace(options.customMono3Mass.ToString(), options.customMono3Name + " ").Replace(options.customMono4Mass.ToString(), options.customMono4Name + " ").Replace(options.customMono5Mass.ToString(), options.customMono5Name + " ");
-                            }
-                            else if (options.HexNAcMax > 0){
-                                solutions = solutions.Replace("230.079038", "dHex ").Replace("288.084517", "Hex ").Replace("417.127110", "Neu5Ac ").Replace("475.132593", "Neu5Gc ").Replace("287.100501", "HexNAc ").Replace("37.955765", "Phos ").Replace("37.946250", "Sulf ").Replace(",", "").Replace("260.053217", "HexA ").Replace("247.105587", "dHexNAc ").Replace("216.063388", "Pent ").Replace("376.100561", "KDN ").Replace(options.customMono1Mass.ToString(), options.customMono1Name + " ").Replace(options.customMono2Mass.ToString(), options.customMono2Name + " ").Replace(options.customMono3Mass.ToString(), options.customMono3Name + " ").Replace(options.customMono4Mass.ToString(), options.customMono4Name + " ").Replace(options.customMono5Mass.ToString(), options.customMono5Name + " ");
-                            }
-                            else {
-                                solutions = solutions.Replace("230.079038", "dHex ").Replace("288.084517", "Hex ").Replace("417.127110", "Neu5Ac ").Replace("475.132593", "Neu5Gc ").Replace("37.955765", "Phos ").Replace("37.946250", "Sulf ").Replace(",", "").Replace("287.100501", "HexN ").Replace("260.053217", "HexA ").Replace("247.105587", "dHexNAc ").Replace("216.063388", "Pent ").Replace("376.100561", "KDN ").Replace(options.customMono1Mass.ToString(), options.customMono1Name + " ").Replace(options.customMono2Mass.ToString(), options.customMono2Name + " ").Replace(options.customMono3Mass.ToString(), options.customMono3Name + " ").Replace(options.customMono4Mass.ToString(), options.customMono4Name + " ").Replace(options.customMono5Mass.ToString(), options.customMono5Name + " ");
-                            }
-                            // peracetylated processing
-                            // Chemical formulae for peracetylated
-                            dHexCount = Regex.Matches(solutions, "dHex ").Count;
-                            if (dHexCount > 0)
-                            {
-                                chemicalFormulaeC += (dHexCount * 10);
-                                chemicalFormulaeH += (dHexCount * 14);
-                                chemicalFormulaeO += (dHexCount * 6);
-                                solutionsUpdate = solutionsUpdate + "(dHex)" + Convert.ToString(dHexCount) + " ";
-                            }
-                            HexACount = Regex.Matches(solutions, "HexA ").Count;
-                            if (HexACount > 0)
-                            {
-                                chemicalFormulaeC += (HexACount * 10);
-                                chemicalFormulaeH += (HexACount * 12);
-                                chemicalFormulaeO += (HexACount * 8);
-                                solutionsUpdate = solutionsUpdate + "(HexA)" + Convert.ToString(HexACount) + " ";
-                            }
-                            PentCount = Regex.Matches(solutions, "Pent ").Count;
-                            if (PentCount > 0)
-                            {
-                                chemicalFormulaeC += (PentCount * 9);
-                                chemicalFormulaeH += (PentCount * 12);
-                                chemicalFormulaeO += (PentCount * 6);
-                                solutionsUpdate = solutionsUpdate + "(Pent)" + Convert.ToString(PentCount) + " ";
-                            }
-                            KDNCount = Regex.Matches(solutions, "KDN ").Count;
-                            if (KDNCount > 0)
-                            {
-                                chemicalFormulaeC += (KDNCount * 15);
-                                chemicalFormulaeH += (KDNCount * 20);
-                                chemicalFormulaeO += (KDNCount * 11);
-                                solutionsUpdate = solutionsUpdate + "(KDN)" + Convert.ToString(KDNCount) + " ";
-                            }
-                            hexCount = Regex.Matches(solutions, "Hex ").Count - Regex.Matches(solutions, "dHex ").Count;
-                            if (hexCount > 0)
-                            {
-                                chemicalFormulaeC += (hexCount * 12);
-                                chemicalFormulaeH += (hexCount * 16);
-                                chemicalFormulaeO += (hexCount * 8);
-                                solutionsUpdate = solutionsUpdate + "(Hex)" + Convert.ToString(hexCount) + " ";
-                            }
-                            neuAcCount = Regex.Matches(solutions, "Neu5Ac ").Count;
-                            if (neuAcCount > 0)
-                            {
-                                chemicalFormulaeC += (neuAcCount * 17);
-                                chemicalFormulaeH += (neuAcCount * 23);
-                                chemicalFormulaeN += (neuAcCount);
-                                chemicalFormulaeO += (neuAcCount * 11);
-                                solutionsUpdate = solutionsUpdate + "(NeuAc)" + Convert.ToString(neuAcCount) + " ";
-                            }
-                            neuGcCount = Regex.Matches(solutions, "Neu5Gc ").Count;
-                            if (neuGcCount > 0)
-                            {
-                                chemicalFormulaeC += (neuGcCount * 19);
-                                chemicalFormulaeH += (neuGcCount * 25);
-                                chemicalFormulaeN += (neuGcCount);
-                                chemicalFormulaeO += (neuGcCount * 13);
-                                solutionsUpdate = solutionsUpdate + "(NeuGc)" + Convert.ToString(neuGcCount) + " ";
-                            }
-                            // HexN and HexNAc are the same mass and composition in peracetylated
-                            HexNCount = Regex.Matches(solutions, "HexN ").Count;
-                            hexNAcCount = Regex.Matches(solutions, "HexNAc ").Count - Regex.Matches(solutions, "dHexNAc ").Count;
-                            hexNhexNAcCount = Regex.Matches(solutions, "HexNAc/HexN ").Count;
-                            if (HexNCount > 0 && options.HexNAcMax == 0) {
-                                chemicalFormulaeC += (HexNCount * 12);
-                                chemicalFormulaeH += (HexNCount * 17);
-                                chemicalFormulaeO += (HexNCount * 7);
-                                chemicalFormulaeN += (HexNCount);
-                                solutionsUpdate = solutionsUpdate + "(HexN)" + Convert.ToString(HexNCount) + " ";
-                            }
-                            else if (hexNAcCount > 0 && options.HexNMax == 0) {
-                                chemicalFormulaeC += (HexNCount * 12);
-                                chemicalFormulaeH += (HexNCount * 17);
-                                chemicalFormulaeO += (HexNCount * 7);
-                                chemicalFormulaeN += (HexNCount);
-                                solutionsUpdate = solutionsUpdate + "(HexNAc)" + Convert.ToString(hexNAcCount) + " ";
-                            }
-                            else if (hexNhexNAcCount > 0) {
-                                chemicalFormulaeC += (HexNCount * 12);
-                                chemicalFormulaeH += (HexNCount * 17);
-                                chemicalFormulaeO += (HexNCount * 7);
-                                chemicalFormulaeN += (HexNCount);
-                                solutionsUpdate = solutionsUpdate + "(HexNAc/HexN)" + Convert.ToString(hexNhexNAcCount) + " ";
-                            }
-                            phosCount = Regex.Matches(solutions, "Phos ").Count;
-                            if (phosCount > 0)
-                            {
-                                chemicalFormulaeC += (phosCount * -2);
-                                chemicalFormulaeH += (phosCount * -1);
-                                chemicalFormulaeO += (phosCount * 2);
-                                chemicalFormulaeP += (phosCount);
-                                solutionsUpdate = solutionsUpdate + "(Phos)" + Convert.ToString(phosCount) + " ";
-                            }
-                            dhexnacCount = Regex.Matches(solutions, "dHexNAc ").Count;
-                            if (dhexnacCount > 0)
-                            {
-                                chemicalFormulaeC += (dhexnacCount * 10);
-                                chemicalFormulaeH += (dhexnacCount * 17);
-                                chemicalFormulaeN += (dhexnacCount);
-                                chemicalFormulaeO += (dhexnacCount * 6);
-                                solutionsUpdate = solutionsUpdate + "(dHexNAc)" + Convert.ToString(dhexnacCount) + " ";
-                            }
-                            sulfCount = Regex.Matches(solutions, "Sulf ").Count;
-                            if (sulfCount > 0)
-                            {
-                                chemicalFormulaeC += (sulfCount * -2);
-                                chemicalFormulaeH += (sulfCount * -2);
-                                chemicalFormulaeO += (sulfCount * 2);
-                                chemicalFormulaeS += (sulfCount);
-                                solutionsUpdate = solutionsUpdate + "(Sulf)" + Convert.ToString(sulfCount) + " ";
-                            }
-                            switch (reducedEnd)
-                            {
-                                case "free":
-                                    chemicalFormulaeC += 4;
-                                    chemicalFormulaeH += 6;
-                                    chemicalFormulaeO += 3;
-                                    break;
-                                case "reduced":
-                                    chemicalFormulaeC += 6;
-                                    chemicalFormulaeH += 10;
-                                    chemicalFormulaeO += 4;
-                                    break;
-                                case "custom":
-                                    chemicalFormulaeC += options.customReducingCCount;
-                                    chemicalFormulaeH += options.customReducingHCount;
-                                    chemicalFormulaeN += options.customReducingNCount;
-                                    chemicalFormulaeO += options.customReducingOCount;
-                                    break;
-                                default:
-                                    break;
-                            }
-                            // Peracetylated
-                            switch (reducedEnd)
-                            {
-                                case "free":
-                                    observedMass = s + 18.010565m + 84.021129m;
-                                    theoreticalMass = target + 18.010565m + 84.021129m;
-                                    break;
-                                case "reduced":
-                                    observedMass = s + 20.026195m + 126.031694m;
-                                    theoreticalMass = target + 20.026195m + 126.031694m;
-                                    break;
-                                case "custom":
-                                    observedMass = s + 18.010565m + options.customReducingMass;
-                                    theoreticalMass = target + 18.010565m + options.customReducingMass;
-                                    break;
-                                default:
-                                    break;
-                            }
-                            break;
-
-                        default:
-                            break;
-                    }
-
-                    // Custom monosaccharides are independent of derivatisation status
-                    // This is incorrectly finding customMonos despite none being set
-                    int customMono1Count = Regex.Matches(solutions, options.customMono1Name + " ").Count;
-                    if (customMono1Count > 0 && monoCustom1 == true)
-                    {
-                        chemicalFormulaeC += (customMono1Count * options.customMono1CCount);
-                        chemicalFormulaeH += (customMono1Count * options.customMono1HCount);
-                        chemicalFormulaeN += (customMono1Count * options.customMono1NCount);
-                        chemicalFormulaeO += (customMono1Count * options.customMono1OCount);
-                        solutionsUpdate += "(" + options.customMono1Name + ")" + customMono1Count + " ";
-                    }
-
-                    int customMono2Count = Regex.Matches(solutions, options.customMono2Name + " ").Count;
-                    if (customMono2Count > 0 && monoCustom2 == true)
-                    {
-                        chemicalFormulaeC += (customMono2Count * options.customMono2CCount);
-                        chemicalFormulaeH += (customMono2Count * options.customMono2HCount);
-                        chemicalFormulaeN += (customMono2Count * options.customMono2NCount);
-                        chemicalFormulaeO += (customMono2Count * options.customMono2OCount);
-                        solutionsUpdate += "(" + options.customMono2Name + ")" + customMono2Count + " ";
-                    }
-
-                    int customMono3Count = Regex.Matches(solutions, options.customMono3Name + " ").Count;
-                    if (customMono3Count > 0 && monoCustom3 == true)
-                    {
-                        chemicalFormulaeC += (customMono3Count * options.customMono3CCount);
-                        chemicalFormulaeH += (customMono3Count * options.customMono3HCount);
-                        chemicalFormulaeN += (customMono3Count * options.customMono3NCount);
-                        chemicalFormulaeO += (customMono3Count * options.customMono3OCount);
-                        solutionsUpdate += "(" + options.customMono3Name + ")" + customMono3Count + " ";
-                    }
-
-                    int customMono4Count = Regex.Matches(solutions, options.customMono4Name + " ").Count;
-                    if (customMono4Count > 0 && monoCustom4 == true)
-                    {
-                        chemicalFormulaeC += (customMono4Count * options.customMono4CCount);
-                        chemicalFormulaeH += (customMono4Count * options.customMono4HCount);
-                        chemicalFormulaeN += (customMono4Count * options.customMono4NCount);
-                        chemicalFormulaeO += (customMono4Count * options.customMono4OCount);
-                        solutionsUpdate += "(" + options.customMono4Name + ")" + customMono4Count + " ";
-                    }
-
-                    int customMono5Count = Regex.Matches(solutions, options.customMono5Name + " ").Count;
-                    if (customMono5Count > 0 && monoCustom5 == true)
-                    {
-                        chemicalFormulaeC += (customMono5Count * options.customMono5CCount);
-                        chemicalFormulaeH += (customMono5Count * options.customMono5HCount);
-                        chemicalFormulaeN += (customMono5Count * options.customMono5NCount);
-                        chemicalFormulaeO += (customMono5Count * options.customMono5OCount);
-                        solutionsUpdate += "(" + options.customMono5Name + ")" + customMono5Count + " ";
-                    }
-
-                    // Preparation to export a chemical formulae in a format compatible with Skyline
-                    string chemicalFormula = "C" + chemicalFormulaeC + "H" + chemicalFormulaeH + "N" + chemicalFormulaeN + "O" + chemicalFormulaeO + "P" + chemicalFormulaeP + "S" + chemicalFormulaeS;
-                    chemicalFormula = chemicalFormula.Replace("N0", "").Replace("P0", "").Replace("S0", "");
-
-                    // Calculation for mass error
-                    error = observedMass - theoreticalMass;
-
-                    // Calculation of scan number and charge state to be represented later
-                    targetIndex.Add(i);
-                    string fileExtension = Path.GetExtension(options.file);
-                    if (mzmlFile == true)
-                    {
-                        string scanNumberForOutput = "";
-                        string chargeForOutput = "";
-                        string retentionTimeForOutput = "";
-                        string TICForOutput = "";
-                        string FileForOutput = "";
-
-                        // mzml input therefore output needs to be include scan #, charge, RT and TIC values.
-                        // Adducts multiply the target list, this step ensures that we can assign metadata to all of the targets (otherwise it looks for targets that aren't there)
-                        for (int z = 0; z < searchRepeats; z++)
-                        {
-                            int index = i % scans.Count;
-                            scanNumberForOutput = Convert.ToString(scans.ElementAt(index));
-                            chargeForOutput = Convert.ToString(charges.ElementAt(index));
-                            retentionTimeForOutput = Convert.ToString(retentionTimes.ElementAt(index));
-                            TICForOutput = Convert.ToString(TICs.ElementAt(index));
-                            FileForOutput = Convert.ToString(files.ElementAt(index));
-                        }
-
-                        // Adding of each string component to output
-                        solutionProcess += solutionsUpdate + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + theoreticalMass + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + observedMass + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + chemicalFormula + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + error + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + scanNumberForOutput + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + chargeForOutput + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + retentionTimeForOutput + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + TICForOutput + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + FileForOutput + Environment.NewLine;
-                    }
-                    else
-                    {
-                        // just text input, so no charge state, scan number, RT, or TIC info
-                        solutionProcess += solutionsUpdate + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + theoreticalMass + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + observedMass + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + chemicalFormula + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + error + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator + Environment.NewLine;
-                    }
-
-
-                    // Method to remove all compositions outside of user-set bounds
-                    int outOfBounds = 0;
-
-                    if (hexCount < options.HexMin || hexCount > options.HexMax)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if (hexNAcCount < options.HexNAcMin || hexNAcCount > options.HexNAcMax)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if (dHexCount < options.dHexMin || dHexCount > options.dHexMax)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if (HexACount < options.HexAMin || HexACount > options.HexAMax)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if (HexNCount < options.HexNMin || HexNCount > options.HexNMax)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if (PentCount < options.PentMin || PentCount > options.PentMax)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if (KDNCount < options.KDNMin || KDNCount > options.KDNMax)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if (neuAcCount < options.Neu5AcMin || neuAcCount > options.Neu5AcMax)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if (neuGcCount < options.Neu5GcMin || neuGcCount > options.Neu5GcMax)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if (phosCount < options.PhosMin || phosCount > options.PhosMax)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if (sulfCount < options.SulfMin || sulfCount > options.SulfMax)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if (dhexnacCount < options.dHexNAcMin || dhexnacCount > options.dHexNAcMax)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if (lNeuAcCount < options.lNeuAcMin || lNeuAcCount > options.lNeuAcMax)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if (eeNeuAcCount < options.eeNeuAcMin || eeNeuAcCount > options.eeNeuAcMax)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if (dNeuAcCount < options.dNeuAcMin || dNeuAcCount > options.dNeuAcMax)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if (amNeuAcCount < options.amNeuAcMin || amNeuAcCount > options.amNeuAcMax)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if (acetylCount < options.acetylMin || acetylCount > options.acetylMax)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if (lNeuGcCount < options.lNeuGcMin || lNeuGcCount > options.lNeuGcMax)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if (eeNeuGcCount < options.eeNeuGcMin || eeNeuGcCount > options.eeNeuGcMax)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if (dNeuGcCount < options.dNeuGcMin || dNeuGcCount > options.dNeuGcMax)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if (amNeuGcCount < options.amNeuGcMin || amNeuGcCount > options.amNeuGcMax)
-                    {
-                        outOfBounds += 1;
-                    }
-
-                    if ((customMono1Count < options.customMono1Min
-                        || customMono1Count > options.customMono1Max)
-                        && monoCustom1 == true)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if ((customMono2Count < options.customMono2Min
-                        || customMono2Count > options.customMono2Max)
-                        && monoCustom2 == true)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if ((customMono3Count < options.customMono3Min
-                        || customMono3Count > options.customMono3Max)
-                        && monoCustom3 == true)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if ((customMono4Count < options.customMono4Min
-                        || customMono4Count > options.customMono4Max)
-                        && monoCustom4 == true)
-                    {
-                        outOfBounds += 1;
-                    }
-                    if ((customMono5Count < options.customMono5Min
-                        || customMono5Count > options.customMono5Max)
-                        && monoCustom5 == true)
-                    {
-                        outOfBounds += 1;
-                    }
-
-                    // The only solutions that get reported are those that do not fall outside of any specified monosaccharide ranges
-                    if (outOfBounds == 0)
-                    {
-                        solutionMultiples += solutionProcess.ToString();
-                    }
-                }
-
-                // Give up if the mass is too high
-                if (s >= targetHigh)
-                {
-                    return;
-                }
-
-                // Keep adding monosaccharides until remainder resets
-                // Starting from current index k, each subset of numbers is considered only once
-                // By starting the loop at k, each combination is built by progressively adding monosaccharides, avoiding different combinations of the same numbers
-                for (int k = 0; k < numbers.Count; k++)
-                {
-                    List<decimal> remaining = [];
-                    decimal n = numbers[k];
-                    for (int j = k; j < numbers.Count; j++) remaining.Add(numbers[j]);
-                    // Combinations are built in a consistent order, avoiding permutations of the same set of monosaccharides
-                    List<decimal> partial_rec = new(partial)
-            {
-                n
-            };
-                    Sum_up_recursive(remaining, target, partial_rec, targetFound, i, options);
-                }
+                Console.WriteLine(
+                    "Total execution time: " +
+                    stopwatch.Elapsed.ToString(@"hh\:mm\:ss\.fff")
+                );
             }
 
             if (!string.IsNullOrWhiteSpace(options.file) && File.Exists(options.file))
