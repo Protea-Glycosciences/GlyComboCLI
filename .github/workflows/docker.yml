@@ -115,7 +115,6 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: Protea-Glycosciences/GlyComboGalaxy
-          ref: reviewupdate
           path: galaxy-wrapper
 
 
