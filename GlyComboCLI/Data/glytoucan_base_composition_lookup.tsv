@@ -1,8 +1,8 @@
 # Source: https://download.glycosmos.org/glycosmos_glycans_list.csv
-# GlyCosmos snapshot date: 2026-08-10
+# GlyCosmos snapshot date: 2026-11-02
 # Source subsumption level: Base composition with linkage
 # Source base-composition records: 8115
-# GlyCombo-compatible canonical lookup records: 3398
+# GlyCombo-compatible canonical lookup records: 3405
 CompositionKey	GlyTouCanAccession
 Hex=0;HexNAc=0;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=2;dHexNAc=0;P=0;S=0;Ac=0	G83958NK
 Hex=0;HexNAc=0;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=3;dHexNAc=0;P=0;S=0;Ac=0	G11689US
@@ -455,6 +455,7 @@ Hex=11;HexNAc=11;dHex=0;HexA=0;HexN=0;Pent=0;KDN=1;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P
 Hex=11;HexNAc=11;dHex=1;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G39258LN
 Hex=11;HexNAc=11;dHex=2;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G98129ME
 Hex=11;HexNAc=11;dHex=3;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G07427JK
+Hex=11;HexNAc=12;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G72475PB
 Hex=11;HexNAc=14;dHex=1;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G08912QX
 Hex=11;HexNAc=1;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G29807WF
 Hex=11;HexNAc=2;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G58087IP
@@ -509,6 +510,7 @@ Hex=12;HexNAc=0;dHex=0;HexA=0;HexN=0;Pent=9;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=
 Hex=12;HexNAc=0;dHex=0;HexA=2;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G13189TL
 Hex=12;HexNAc=0;dHex=2;HexA=0;HexN=0;Pent=6;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G51641VN
 Hex=12;HexNAc=10;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G57277US
+Hex=12;HexNAc=11;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G01944YJ
 Hex=12;HexNAc=11;dHex=1;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G81904DM
 Hex=12;HexNAc=12;dHex=1;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G56001JD
 Hex=12;HexNAc=16;dHex=1;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G44023UC
@@ -518,6 +520,7 @@ Hex=12;HexNAc=2;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=
 Hex=12;HexNAc=7;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G01608SO
 Hex=12;HexNAc=7;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=1;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G62269QC
 Hex=13;HexNAc=0;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G64509QI
+Hex=13;HexNAc=12;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G47408NQ
 Hex=13;HexNAc=12;dHex=1;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G78547CY
 Hex=13;HexNAc=12;dHex=5;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G65564OO
 Hex=13;HexNAc=1;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G17818RC
@@ -530,6 +533,7 @@ Hex=14;HexNAc=1;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=
 Hex=14;HexNAc=2;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G06156DS
 Hex=14;HexNAc=5;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G08918QI
 Hex=15;HexNAc=13;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G07278EA
+Hex=15;HexNAc=14;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G24413TZ
 Hex=15;HexNAc=14;dHex=1;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G79845LR
 Hex=15;HexNAc=14;dHex=5;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=2;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G71728FY
 Hex=15;HexNAc=14;dHex=6;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=1;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G13520CB
@@ -1715,6 +1719,7 @@ Hex=5;HexNAc=2;dHex=2;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0
 Hex=5;HexNAc=2;dHex=2;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=2;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G52654RS
 Hex=5;HexNAc=2;dHex=3;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G95463SS
 Hex=5;HexNAc=3;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G39446WN
+Hex=5;HexNAc=3;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=1;Ac=0	G18813AK
 Hex=5;HexNAc=3;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=1;dHexNAc=0;P=0;S=0;Ac=0	G20934GG
 Hex=5;HexNAc=3;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=2;dHexNAc=0;P=0;S=0;Ac=0	G13480XQ
 Hex=5;HexNAc=3;dHex=0;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=1;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G68190MT
@@ -2683,6 +2688,7 @@ Hex=7;HexNAc=6;dHex=5;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=2;Neu5Gc=1;dHexNAc=0;P=0
 Hex=7;HexNAc=6;dHex=5;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=3;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G53622FH
 Hex=7;HexNAc=6;dHex=6;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G37364RR
 Hex=7;HexNAc=6;dHex=6;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=1;dHexNAc=0;P=0;S=0;Ac=0	G88324AO
+Hex=7;HexNAc=6;dHex=6;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=3;dHexNAc=0;P=0;S=0;Ac=0	G63402CM
 Hex=7;HexNAc=6;dHex=6;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=1;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G22646YE
 Hex=7;HexNAc=6;dHex=6;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=1;Neu5Gc=2;dHexNAc=0;P=0;S=0;Ac=0	G02676YF
 Hex=7;HexNAc=6;dHex=6;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=2;Neu5Gc=1;dHexNAc=0;P=0;S=0;Ac=0	G26080LH
@@ -3256,6 +3262,7 @@ Hex=9;HexNAc=6;dHex=4;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=1;Neu5Gc=0;dHexNAc=0;P=0
 Hex=9;HexNAc=6;dHex=4;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=1;Neu5Gc=1;dHexNAc=0;P=0;S=0;Ac=0	G52675UP
 Hex=9;HexNAc=6;dHex=4;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=1;Neu5Gc=2;dHexNAc=0;P=0;S=0;Ac=0	G56892FO
 Hex=9;HexNAc=6;dHex=4;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=2;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G42960VK
+Hex=9;HexNAc=6;dHex=4;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=2;Neu5Gc=1;dHexNAc=0;P=0;S=0;Ac=0	G42237PD
 Hex=9;HexNAc=6;dHex=4;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=3;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G76789KC
 Hex=9;HexNAc=6;dHex=5;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=0;dHexNAc=0;P=0;S=0;Ac=0	G43806FA
 Hex=9;HexNAc=6;dHex=5;HexA=0;HexN=0;Pent=0;KDN=0;Neu5Ac=0;Neu5Gc=1;dHexNAc=0;P=0;S=0;Ac=0	G52145PO
