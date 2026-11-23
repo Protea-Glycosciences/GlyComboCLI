@@ -61,8 +61,8 @@ internal static class MonosaccharideCatalog
         yield return new("Acetyl", "Acetyl", 42.010565m, 2, 2, 0, 1, 0, 0, o.acetylMin, o.acetylMax);
         yield return new("lNeuGc", "lNeuGc", 289.0797664m, 11, 15, 1, 8, 0, 0, o.lNeuGcMin, o.lNeuGcMax);
         yield return new("eeNeuGc", "eNeuGc", 335.1216313m, 13, 21, 1, 9, 0, 0, o.eeNeuGcMin, o.eeNeuGcMax);
-        yield return new("dNeuGc", "dNeuGc", 306.1063155m, 13, 22, 2, 8, 0, 0, o.dNeuGcMin, o.dNeuGcMax);
-        yield return new("amNeuGc", "amNeuGc", 334.1376157m, 11, 18, 2, 8, 0, 0, o.amNeuGcMin, o.amNeuGcMax);
+        yield return new("dNeuGc", "dNeuGc", 334.1376157m, 13, 22, 2, 8, 0, 0, o.dNeuGcMin, o.dNeuGcMax);
+        yield return new("amNeuGc", "amNeuGc", 306.1063155m, 11, 18, 2, 8, 0, 0, o.amNeuGcMin, o.amNeuGcMax);
     }
 
     private static IEnumerable<MonosaccharideDefinition> Permethylated(CommandOptions o)
@@ -71,8 +71,8 @@ internal static class MonosaccharideCatalog
         yield return new("HexA", "HexA", 218.079040m, 9, 14, 0, 6, 0, 0, o.HexAMin, o.HexAMax);
         yield return new("dHex", "dHex", 174.089210m, 8, 14, 0, 4, 0, 0, o.dHexMin, o.dHexMax);
         yield return new("HexNAc", "HexNAc", 245.126324m, 11, 19, 1, 5, 0, 0, o.HexNAcMin, o.HexNAcMax);
-        yield return new("HexN", "HexN", 203.115758m, 10, 19, 1, 4, 0, 0, o.HexNMin, o.HexNMax);
-        yield return new("dHexNAc", "dHexNAc", 215.115759m, 10, 17, 1, 4, 0, 0, o.dHexNAcMin, o.dHexNAcMax);
+        yield return new("HexN", "HexN", 217.131409m, 10, 19, 1, 4, 0, 0, o.HexNMin, o.HexNMax);
+        yield return new("dHexNAc", "dHexNAc", 215.115758m, 10, 17, 1, 4, 0, 0, o.dHexNAcMin, o.dHexNAcMax);
         yield return new("Pent", "Pent", 160.073560m, 7, 12, 0, 4, 0, 0, o.PentMin, o.PentMax);
         yield return new("KDN", "KDN", 320.147120m, 14, 24, 0, 8, 0, 0, o.KDNMin, o.KDNMax);
         yield return new("Neu5Ac", "NeuAc", 361.173669m, 16, 27, 1, 8, 0, 0, o.Neu5AcMin, o.Neu5AcMax);
@@ -86,9 +86,9 @@ internal static class MonosaccharideCatalog
         yield return new("Hex", "Hex", 288.084517m, 12, 16, 0, 8, 0, 0, o.HexMin, o.HexMax);
         yield return new("HexA", "HexA", 260.053217m, 10, 12, 0, 8, 0, 0, o.HexAMin, o.HexAMax);
         yield return new("dHex", "dHex", 230.079038m, 10, 14, 0, 6, 0, 0, o.dHexMin, o.dHexMax);
-        yield return new("dHexNAc", "dHexNAc", 247.105587m, 10, 17, 1, 6, 0, 0, o.dHexNAcMin, o.dHexNAcMax);
+        yield return new("dHexNAc", "dHexNAc", 229.095023m, 10, 15, 1, 5, 0, 0, o.dHexNAcMin, o.dHexNAcMax);
         yield return new("Pent", "Pent", 216.063388m, 9, 12, 0, 6, 0, 0, o.PentMin, o.PentMax);
-        yield return new("KDN", "KDN", 376.100561m, 15, 20, 0, 11, 0, 0, o.KDNMin, o.KDNMax);
+        yield return new("KDN", "KDN", 418.111125m, 17, 22, 0, 12, 0, 0, o.KDNMin, o.KDNMax);
         yield return new("Neu5Ac", "NeuAc", 417.127110m, 17, 23, 1, 11, 0, 0, o.Neu5AcMin, o.Neu5AcMax);
         yield return new("Neu5Gc", "NeuGc", 475.132593m, 19, 25, 1, 13, 0, 0, o.Neu5GcMin, o.Neu5GcMax);
         yield return new("Phos", "Phos", 37.955765m, -2, -1, 0, 2, 1, 0, o.PhosMin, o.PhosMax);
