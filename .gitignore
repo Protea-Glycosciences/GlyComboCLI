@@ -10,6 +10,8 @@
 /GlyComboCLI/GlyComboTest_result.csv
 /GlyComboCLI/GlyComboTest_result_parameters.txt
 /GlyComboCLI/Properties/launchSettings.json
+/releases/windows-x64
+/releases/linux-x64
 
 # User-specific files
 *.rsuser

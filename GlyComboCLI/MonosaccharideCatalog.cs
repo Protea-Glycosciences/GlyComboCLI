@@ -80,7 +80,8 @@ internal static class MonosaccharideCatalog
         yield return new("Phos", "Phos", 93.981980m, 1, 3, 0, 3, 1, 0, o.PhosMin, o.PhosMax);
         yield return new("Sulf", "Sulf", 65.941165m, -1, -2, 0, 3, 0, 1, o.SulfMin, o.SulfMax);
     }
-
+    // Assuming amide are not peracetylated during the derivatisation process.
+    // Amines are assumed to be peracetylated, so HexN and HexNAc are combined into a single monosaccharide definition.
     private static IEnumerable<MonosaccharideDefinition> Peracetylated(CommandOptions o)
     {
         yield return new("Hex", "Hex", 288.084517m, 12, 16, 0, 8, 0, 0, o.HexMin, o.HexMax);
