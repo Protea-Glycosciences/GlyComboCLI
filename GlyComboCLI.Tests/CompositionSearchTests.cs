@@ -45,6 +45,8 @@ public class CompositionSearchTests
             ["hexAMax"] = "3",
             ["hexNMin"] = "0",
             ["hexNMax"] = "2",
+            ["dHexNAcMin"] = "0",
+            ["dHexNAcMax"] = "2",
             ["pentMin"] = "0",
             ["pentMax"] = "3",
             ["acetylMin"] = "0",
@@ -61,8 +63,8 @@ public class CompositionSearchTests
         Assert.Contains("(HexN)2 (Acetyl)2", csv);
         Assert.Contains("C16H30N2O11", csv);
 
-        Assert.Contains("(HexA)1", csv);
-        Assert.Contains("C6H12O7", csv);
+        Assert.Contains("(HexA)1 (dHexNAc)1", csv);
+        Assert.Contains("C14H25N1O11", csv);
 
         Assert.Contains("(HexN)1 (Hex)1 (Acetyl)1", csv);
         Assert.Contains("C14H27N1O11", csv);
@@ -361,7 +363,7 @@ public class CompositionSearchTests
 
         string csv = result.ReadResultCsv();
         Assert.Contains("(dHex)1 (KDN)1 (Hex)1 (HexNAc/HexN)1", csv);
-        Assert.Contains("C53H73N1O35", csv);
+        Assert.Contains("C55H75N1O36", csv);
 
         Assert.Contains("(HexA)1 (Pent)1", csv);
         Assert.Contains("C23H30O17", csv);
@@ -464,7 +466,7 @@ public class CompositionSearchTests
 
         string csv = result.ReadResultCsv();
         Assert.Contains("(dHex)1 (KDN)1 (Hex)1 (HexN)1", csv);
-        Assert.Contains("C53H73N1O35", csv);
+        Assert.Contains("C55H75N1O36", csv);
 
         Assert.Contains("(HexA)1 (Pent)1", csv);
         Assert.Contains("C23H30O17", csv);
